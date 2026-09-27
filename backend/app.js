@@ -1,0 +1,51 @@
+
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const db = require('./models');
+const doctorRoutes = require('./routes/doctor.routes');
+const authRoutes = require('./routes/auth.routes');
+const userRoutes = require('./routes/user.routes');
+const errorHandler = require('./middlewares/errorHandler');
+const cityRoutes = require('./routes/city.routes');
+const clinicRoutes = require('./routes/clinic.routes');
+const visitPlanRoutes = require('./routes/visitPlan.routes');
+const visitRoutes = require('./routes/visits.routes');
+const doctorUserRoutes = require('./routes/doctorUser.routes');
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/doctors', doctorRoutes);
+app.use('/api/cities', cityRoutes);
+app.use('/api/clinics', clinicRoutes);
+app.use('/api/visit-plans', visitPlanRoutes);
+app.use('/api/visits', visitRoutes);
+app.use('/api/doctor-users', doctorUserRoutes);
+
+const path = require('path');
+const frontendBuildPath = path.join(__dirname, '../frontend/build');
+app.use(express.static(frontendBuildPath));
+
+app.use(errorHandler);
+
+// Catch all non-API routes and serve index.html for React SPA
+app.get('*', (req, res) => {
+  res.sendFile(path.join(frontendBuildPath, 'index.html'));
+});
+
+const PORT = process.env.PORT || 4000;
+
+db.sequelize.sync({ force: false }) // set true first time if you want to recreate tables
+  .then(() => {
+    console.log('Database synced');
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+  })
+  .catch(err => {
+    console.error('Failed to sync DB:', err);
+  });
