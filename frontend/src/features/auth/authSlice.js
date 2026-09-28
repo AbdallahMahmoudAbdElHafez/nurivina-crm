@@ -3,14 +3,23 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../api/apiClient';
 
 export const login = createAsyncThunk('auth/login', async (creds, thunkAPI) => {
-  const res = await api.post('/auth/login', creds);
-  console.log(res.data);
-  return res.data;
+  try {
+    const res = await api.post('/auth/login', creds);
+    return res.data;
+  } catch (err) {
+    const msg = err.response?.data?.message || err.message || 'فشل تسجيل الدخول';
+    return thunkAPI.rejectWithValue(msg);
+  }
 });
 
-export const register = createAsyncThunk('auth/register', async (data) => {
-  const res = await api.post('/auth/register', data);
-  return res.data;
+export const register = createAsyncThunk('auth/register', async (data, thunkAPI) => {
+  try {
+    const res = await api.post('/auth/register', data);
+    return res.data;
+  } catch (err) {
+    const msg = err.response?.data?.message || err.message || 'فشل التسجيل';
+    return thunkAPI.rejectWithValue(msg);
+  }
 });
 
 const initialState = {
@@ -44,7 +53,7 @@ extraReducers(builder) {
       state.error = null;
     })
     .addCase(login.rejected, (state, action) => {
-      state.error = action.error.message || 'فشل تسجيل الدخول';
+      state.error = action.payload || action.error.message || 'فشل تسجيل الدخول';
       state.status = 'failed';
     })
     .addCase(register.fulfilled, (state, action) => {
@@ -53,7 +62,7 @@ extraReducers(builder) {
       state.error = null;
     })
     .addCase(register.rejected, (state, action) => {
-      state.error = action.error.message || 'فشل التسجيل';
+      state.error = action.payload || action.error.message || 'فشل التسجيل';
       state.status = 'failed';
     });
 }

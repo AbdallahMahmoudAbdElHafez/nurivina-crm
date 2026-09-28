@@ -1,3 +1,4 @@
+require('mysql2');
 const { Sequelize, DataTypes } = require('sequelize');
 const dbConfig = require('../config/db.config');
 
