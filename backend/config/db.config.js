@@ -1,4 +1,6 @@
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
+require('dotenv').config(); // also check current dir
 
 module.exports = {
   HOST: process.env.DB_HOST || 'localhost',

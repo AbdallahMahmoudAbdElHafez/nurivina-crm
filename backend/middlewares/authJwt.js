@@ -3,15 +3,14 @@ const db = require('../models');
 const User = db.user;
 
 const verifyToken = (req, res, next) => {
-  const bcrypt = require('bcryptjs');
-bcrypt.hash('1234', 10).then(console.log);
   const authHeader = req.headers['authorization'];
   if (!authHeader) return res.status(401).json({ message: 'No token provided' });
 
   const token = authHeader.split(' ')[1];
   if (!token) return res.status(401).json({ message: 'No token provided' });
 
-  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+  const secret = process.env.JWT_SECRET || 'nurivina_crm_secure_token_secret_key_2026';
+  jwt.verify(token, secret, (err, decoded) => {
     if (err) return res.status(401).json({ message: 'Unauthorized' });
 
     // توحيد الحقول

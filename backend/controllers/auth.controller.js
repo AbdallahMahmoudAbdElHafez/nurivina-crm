@@ -24,10 +24,13 @@ const login = async (req, res, next) => {
     const match = await bcrypt.compare(password, user.password);
     if (!match) return res.status(401).json({ message: 'بيانات الدخول غير صحيحة' });
 
+    const secret = process.env.JWT_SECRET || 'nurivina_crm_secure_token_secret_key_2026';
+    const expiresIn = process.env.JWT_EXPIRES_IN || '1d';
+
     const token = jwt.sign(
       { id: user.user_id, full_name: user.full_name, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN }
+      secret,
+      { expiresIn }
     );
 
     res.json({ token, user: { id: user.user_id, full_name: user.full_name, role: user.role } });
