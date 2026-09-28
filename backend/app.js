@@ -1,5 +1,6 @@
 
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 const express = require('express');
 const cors = require('cors');
 const db = require('./models');
@@ -26,7 +27,6 @@ app.use('/api/visit-plans', visitPlanRoutes);
 app.use('/api/visits', visitRoutes);
 app.use('/api/doctor-users', doctorUserRoutes);
 
-const path = require('path');
 const frontendBuildPath = path.join(__dirname, '../frontend/build');
 app.use(express.static(frontendBuildPath));
 
