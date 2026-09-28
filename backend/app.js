@@ -39,13 +39,18 @@ app.get('*', (req, res) => {
 
 const PORT = process.env.PORT || 4000;
 
-db.sequelize.sync({ force: false }) // set true first time if you want to recreate tables
-  .then(() => {
-    console.log('Database synced');
-    app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
+if (process.env.VERCEL !== '1') {
+  db.sequelize.sync({ force: false })
+    .then(() => {
+      console.log('Database synced');
+      app.listen(PORT, () => {
+        console.log(`Server running on port ${PORT}`);
+      });
+    })
+    .catch(err => {
+      console.error('Failed to sync DB:', err);
     });
-  })
-  .catch(err => {
-    console.error('Failed to sync DB:', err);
-  });
+}
+
+module.exports = app;
+
