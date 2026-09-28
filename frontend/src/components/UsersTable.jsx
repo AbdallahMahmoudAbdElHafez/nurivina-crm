@@ -11,7 +11,10 @@ import {
   Button,
   TextField,
   MenuItem,
+  Stack,
+  IconButton,
 } from '@mui/material';
+import { Delete, Edit, PersonAdd } from '@mui/icons-material';
 
 export default function UsersTable() {
   const dispatch = useDispatch();
@@ -27,18 +30,39 @@ export default function UsersTable() {
   }, [dispatch]);
 
   const columns = [
-    { accessorKey: 'user_id', header: 'ID' },
+    { accessorKey: 'user_id', header: 'ID', size: 60 },
     { accessorKey: 'full_name', header: 'الاسم الكامل' },
-    { accessorKey: 'role', header: 'الدور' },
     {
-      accessorFn: (row) => row.manager?.full_name || '-',
+      accessorKey: 'role',
+      header: 'الدور',
+      size: 100,
+      Cell: ({ row }) => {
+        const r = row.original.role;
+        return (
+          <span
+            style={{
+              padding: '3px 8px',
+              borderRadius: '6px',
+              fontSize: '12px',
+              fontWeight: 600,
+              backgroundColor: r === 'admin' ? '#fee2e2' : r === 'manager' ? '#eff6ff' : '#f1f5f9',
+              color: r === 'admin' ? '#991b1b' : r === 'manager' ? '#1e40af' : '#334155',
+            }}
+          >
+            {r === 'admin' ? 'أدمن' : r === 'manager' ? 'مدير' : 'مندوب'}
+          </span>
+        );
+      },
+    },
+    {
+      accessorFn: (row) => row.manager?.full_name || '—',
       id: 'manager_name',
-      header: 'المدير',
+      header: 'المدير المباشر',
     },
   ];
 
   const handleDelete = async (id) => {
-    if (!window.confirm('هل أنت متأكد من الحذف؟')) return;
+    if (!window.confirm('هل أنت متأكد من حذف هذا المستخدم؟')) return;
     await api.delete(`/users/${id}`);
     dispatch(fetchUsers());
   };
@@ -54,43 +78,66 @@ export default function UsersTable() {
   };
 
   return (
-    <div className="p-4">
-      <h2 className="text-xl font-bold mb-4">إدارة المستخدمين</h2>
+    <div style={{ width: '100%' }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '16px',
+          flexWrap: 'wrap',
+          gap: '10px',
+        }}
+      >
+        <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#1e293b' }}>
+          👥 إدارة المستخدمين
+        </h2>
 
-      {currentUser?.role === 'admin' && (
-        <button
-          onClick={handleAdd}
-          className="mb-3 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-        >
-          + إضافة مستخدم
-        </button>
-      )}
+        {currentUser?.role === 'admin' && (
+          <button
+            onClick={handleAdd}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '9px 16px',
+              backgroundColor: '#16a34a',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '8px',
+              fontWeight: 600,
+              fontSize: '14px',
+              cursor: 'pointer',
+              transition: 'background-color 0.2s',
+            }}
+          >
+            <span>+</span>
+            <span>إضافة مستخدم</span>
+          </button>
+        )}
+      </div>
 
-      <MaterialReactTable
-        columns={columns}
-        data={users || []}
-        state={{ isLoading: status === 'loading' }}
-        enableRowActions={currentUser?.role === 'admin'}
-        renderRowActions={({ row }) =>
-          currentUser?.role === 'admin' ? (
-            <div className="flex gap-2">
-              <button
-                onClick={() => handleEdit(row)}
-                className="bg-blue-500 text-white px-2 py-1 rounded"
-              >
-                تعديل
-              </button>
-              <button
-                onClick={() => handleDelete(row.original.user_id)}
-                className="bg-red-500 text-white px-2 py-1 rounded"
-              >
-                حذف
-              </button>
-            </div>
-          ) : null
-        }
-        initialState={{ density: 'compact' }}
-      />
+      <div className="table-responsive-container">
+        <MaterialReactTable
+          columns={columns}
+          data={users || []}
+          state={{ isLoading: status === 'loading' }}
+          enableRowActions={currentUser?.role === 'admin'}
+          renderRowActions={({ row }) =>
+            currentUser?.role === 'admin' ? (
+              <div style={{ display: 'flex', gap: '4px' }}>
+                <IconButton color="primary" size="small" onClick={() => handleEdit(row)}>
+                  <Edit fontSize="small" />
+                </IconButton>
+                <IconButton color="error" size="small" onClick={() => handleDelete(row.original.user_id)}>
+                  <Delete fontSize="small" />
+                </IconButton>
+              </div>
+            ) : null
+          }
+          initialState={{ density: 'compact' }}
+        />
+      </div>
 
       <UserDialog
         open={openForm}
@@ -128,28 +175,34 @@ function UserDialog({ open, onClose, user, onSaved, allUsers }) {
   };
 
   const handleSubmit = async () => {
-    if (user)
+    if (!form.full_name) return alert('أدخل الاسم الكامل');
+    if (user) {
       await api.put(`/users/${user.user_id}`, form);
-    else
+    } else {
+      if (!form.password) return alert('أدخل كلمة المرور');
       await api.post('/users', form);
+    }
     onSaved();
   };
 
-  const managers = allUsers.filter(
+  const managers = (allUsers || []).filter(
     (u) => u.role === 'manager' || u.role === 'admin'
   );
 
   return (
-    <Dialog open={open} onClose={onClose}>
-      <DialogTitle>{user ? 'تعديل المستخدم' : 'إضافة مستخدم'}</DialogTitle>
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs">
+      <DialogTitle style={{ fontWeight: 700 }}>
+        {user ? 'تعديل المستخدم' : 'إضافة مستخدم جديد'}
+      </DialogTitle>
       <DialogContent>
-        <div className="flex flex-col gap-3 mt-2 w-80">
+        <Stack spacing={2} mt={1}>
           <TextField
             label="الاسم الكامل"
             name="full_name"
             value={form.full_name}
             onChange={handleChange}
             fullWidth
+            required
           />
           {!user && (
             <TextField
@@ -159,6 +212,7 @@ function UserDialog({ open, onClose, user, onSaved, allUsers }) {
               value={form.password}
               onChange={handleChange}
               fullWidth
+              required
             />
           )}
           <TextField
@@ -169,9 +223,9 @@ function UserDialog({ open, onClose, user, onSaved, allUsers }) {
             onChange={handleChange}
             fullWidth
           >
-            <MenuItem value="rep">ممثل</MenuItem>
-            <MenuItem value="manager">مدير</MenuItem>
-            <MenuItem value="admin">أدمن</MenuItem>
+            <MenuItem value="rep">مندوب (Rep)</MenuItem>
+            <MenuItem value="manager">مدير (Manager)</MenuItem>
+            <MenuItem value="admin">مدير نظام (Admin)</MenuItem>
           </TextField>
           <TextField
             select
@@ -184,14 +238,14 @@ function UserDialog({ open, onClose, user, onSaved, allUsers }) {
             <MenuItem value="">بدون مدير</MenuItem>
             {managers.map((m) => (
               <MenuItem key={m.user_id} value={m.user_id}>
-                {m.full_name}
+                {m.full_name} ({m.role})
               </MenuItem>
             ))}
           </TextField>
-        </div>
+        </Stack>
       </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>إلغاء</Button>
+      <DialogActions style={{ padding: '12px 24px' }}>
+        <Button onClick={onClose} color="inherit">إلغاء</Button>
         <Button onClick={handleSubmit} variant="contained" color="success">
           حفظ
         </Button>

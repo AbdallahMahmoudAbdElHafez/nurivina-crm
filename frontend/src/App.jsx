@@ -4,6 +4,7 @@ import { Provider, useSelector } from "react-redux";
 import { store } from "./app/store";
 import Sidebar from "./components/Sidebar";
 import Navbar from "./components/Navbar";
+import BottomNav from "./components/BottomNav";
 import OfflineBanner from "./components/OfflineBanner";
 import { Routes, Route, Navigate, BrowserRouter } from "react-router-dom";
 import LoginPage from "./pages/LoginPage";
@@ -67,7 +68,14 @@ function MainLayout() {
           onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
           isMobile={isMobile}
         />
-        <main style={{ padding: isMobile ? "12px 10px" : "20px" }}>
+        <main
+          className="main-content-area"
+          style={{
+            padding: isMobile ? "12px 12px" : "20px 24px",
+            maxWidth: "100%",
+            overflowX: "hidden",
+          }}
+        >
           {/* شريط تنبيه العمل بدون إنترنت والمزامنة */}
           <OfflineBanner />
 
@@ -150,6 +158,9 @@ function MainLayout() {
           </Routes>
         </main>
       </div>
+
+      {/* شريط التنقل السفلي السريع للهواتف */}
+      {token && <BottomNav />}
     </BrowserRouter>
   );
 }

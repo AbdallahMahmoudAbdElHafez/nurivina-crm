@@ -26,35 +26,120 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
-      <div className="bg-white shadow-lg rounded-xl p-6 w-96">
-        <h2 className="text-xl font-bold mb-4 text-center">تسجيل حساب جديد</h2>
-        {error && <div className="bg-red-100 text-red-600 p-2 rounded mb-2">{error}</div>}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <input
-            type="text"
-            name="full_name"
-            placeholder="الاسم الكامل"
-            value={form.full_name}
-            onChange={handleChange}
-            required
-            className="w-full border p-2 rounded"
-          />
-          <input
-            type="password"
-            name="password"
-            placeholder="كلمة المرور"
-            value={form.password}
-            onChange={handleChange}
-            required
-            className="w-full border p-2 rounded"
-          />
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '85vh',
+        padding: '16px',
+      }}
+    >
+      <div
+        style={{
+          backgroundColor: '#ffffff',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+          borderRadius: '16px',
+          padding: '28px 24px',
+          width: '100%',
+          maxWidth: '400px',
+          border: '1px solid #e2e8f0',
+        }}
+      >
+        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+          <div style={{ fontSize: '36px', marginBottom: '8px' }}>👤</div>
+          <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', margin: 0 }}>
+            تسجيل حساب جديد
+          </h2>
+          <p style={{ fontSize: '13px', color: '#64748b', marginTop: '4px' }}>
+            إضافة مستخدم جديد للنظام
+          </p>
+        </div>
+
+        {error && (
+          <div
+            style={{
+              backgroundColor: '#fee2e2',
+              color: '#dc2626',
+              border: '1px solid #fecaca',
+              padding: '10px 14px',
+              borderRadius: '8px',
+              marginBottom: '16px',
+              fontSize: '13px',
+              fontWeight: 600,
+            }}
+          >
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+              الاسم الكامل
+            </label>
+            <input
+              type="text"
+              name="full_name"
+              placeholder="أدخل الاسم الكامل"
+              value={form.full_name}
+              onChange={handleChange}
+              required
+              style={{
+                width: '100%',
+                padding: '12px 14px',
+                borderRadius: '8px',
+                border: '1px solid #cbd5e1',
+                boxSizing: 'border-box',
+                fontSize: '15px',
+                outline: 'none',
+              }}
+            />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+              كلمة المرور
+            </label>
+            <input
+              type="password"
+              name="password"
+              placeholder="••••••••"
+              value={form.password}
+              onChange={handleChange}
+              required
+              style={{
+                width: '100%',
+                padding: '12px 14px',
+                borderRadius: '8px',
+                border: '1px solid #cbd5e1',
+                boxSizing: 'border-box',
+                fontSize: '15px',
+                outline: 'none',
+              }}
+            />
+          </div>
+
           <button
             type="submit"
             disabled={status === 'loading'}
-            className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 disabled:opacity-50"
+            style={{
+              width: '100%',
+              backgroundColor: '#16a34a',
+              color: '#ffffff',
+              padding: '12px',
+              borderRadius: '8px',
+              border: 'none',
+              fontWeight: 700,
+              fontSize: '15px',
+              cursor: status === 'loading' ? 'not-allowed' : 'pointer',
+              opacity: status === 'loading' ? 0.7 : 1,
+              marginTop: '8px',
+              transition: 'background-color 0.2s',
+            }}
           >
-            {status === 'loading' ? 'جاري التسجيل...' : 'تسجيل'}
+            {status === 'loading' ? 'جاري التسجيل...' : 'تسجيل الحساب'}
           </button>
         </form>
       </div>

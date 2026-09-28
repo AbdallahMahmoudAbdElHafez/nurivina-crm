@@ -53,19 +53,19 @@ export default function DoctorUserManager() {
     setDoctors(res.data);
   };
 
-const fetchMyDoctors = async () => {
-  try {
-    let res;
-    if (currentUser.role === "admin") {
-      res = await api.get("/doctors");
-    } else {
-      res = await api.get("/doctor-users/me");
+  const fetchMyDoctors = async () => {
+    try {
+      let res;
+      if (currentUser.role === "admin") {
+        res = await api.get("/doctors");
+      } else {
+        res = await api.get("/doctor-users/me");
+      }
+      setDoctors(res.data);
+    } catch (err) {
+      console.error("خطأ في جلب الأطباء:", err);
     }
-    setDoctors(res.data);
-  } catch (err) {
-    console.error("خطأ في جلب الأطباء:", err);
-  }
-};
+  };
 
   const fetchUserDoctors = async (userId) => {
     const res = await api.get(`/doctor-users/${userId}`);
@@ -89,6 +89,7 @@ const fetchMyDoctors = async () => {
   };
 
   const handleRemove = async (doctorId) => {
+    if (!window.confirm("هل أنت متأكد من فك ربط الطبيب؟")) return;
     await api.delete(`/doctor-users/${selectedUser}/${doctorId}`);
     fetchUserDoctors(selectedUser);
   };
@@ -96,82 +97,138 @@ const fetchMyDoctors = async () => {
   // ====== واجهة الأدمن والمدير ======
   if (currentUser?.role === "admin" || currentUser?.role === "manager") {
     return (
-      <div className="p-6">
-        <h2 className="text-xl font-bold mb-4">
+      <div style={{ maxWidth: "900px", margin: "0 auto" }}>
+        <h2 style={{ fontSize: "1.25rem", fontWeight: 700, marginBottom: "16px", color: "#1e293b" }}>
           {currentUser.role === "admin"
-            ? "إدارة ربط الأطباء بالمستخدمين"
-            : "ربط الأطباء بالمندوبين التابعين لي"}
+            ? "🔗 إدارة ربط الأطباء بالمستخدمين"
+            : "🔗 ربط الأطباء بالمندوبين التابعين لي"}
         </h2>
 
-        <div className="flex gap-4 items-center mb-6">
-          <select
-            value={selectedUser}
-            onChange={(e) => {
-              setSelectedUser(e.target.value);
-              fetchUserDoctors(e.target.value);
-            }}
-            className="border p-2 rounded"
-          >
-            <option value="">اختر المستخدم</option>
-            {users.map((u) => (
-              <option key={u.user_id} value={u.user_id}>
-                {u.full_name} ({u.role})
-              </option>
-            ))}
-          </select>
+        <div
+          style={{
+            background: "#ffffff",
+            padding: "16px",
+            borderRadius: "12px",
+            boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+            marginBottom: "20px",
+            border: "1px solid #e2e8f0",
+          }}
+        >
+          <div style={{ fontWeight: 600, fontSize: "14px", marginBottom: "12px", color: "#334155" }}>
+            إضافة طبيب لمندوب
+          </div>
+          <div className="responsive-form-row">
+            <select
+              value={selectedUser}
+              onChange={(e) => {
+                setSelectedUser(e.target.value);
+                if (e.target.value) fetchUserDoctors(e.target.value);
+                else setUserDoctors([]);
+              }}
+              style={{
+                padding: "10px 12px",
+                borderRadius: "8px",
+                border: "1px solid #cbd5e1",
+                backgroundColor: "#fff",
+                fontSize: "14px",
+              }}
+            >
+              <option value="">اختر المستخدم</option>
+              {users.map((u) => (
+                <option key={u.user_id} value={u.user_id}>
+                  {u.full_name} ({u.role})
+                </option>
+              ))}
+            </select>
 
-  <select
-  value={selectedDoctor}
-  onChange={(e) => setSelectedDoctor(e.target.value)}
-  className="border p-2 rounded"
->
-  <option value="">اختر الطبيب</option>
-  {doctors.map((d) => (
-    <option key={d.id} value={d.id}>
-      {d.name}
-    </option>
-  ))}
-</select>
+            <select
+              value={selectedDoctor}
+              onChange={(e) => setSelectedDoctor(e.target.value)}
+              style={{
+                padding: "10px 12px",
+                borderRadius: "8px",
+                border: "1px solid #cbd5e1",
+                backgroundColor: "#fff",
+                fontSize: "14px",
+              }}
+            >
+              <option value="">اختر الطبيب</option>
+              {doctors.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
 
-          <button
-            onClick={handleAssign}
-            className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-          >
-            إضافة
-          </button>
+            <button
+              onClick={handleAssign}
+              style={{
+                padding: "10px 18px",
+                backgroundColor: "#16a34a",
+                color: "#ffffff",
+                border: "none",
+                borderRadius: "8px",
+                fontWeight: 600,
+                fontSize: "14px",
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+              }}
+            >
+              + ربط الطبيب
+            </button>
+          </div>
         </div>
 
         {selectedUser && (
-          <div>
-            <h3 className="text-lg font-semibold mb-2">
-              الأطباء المرتبطين بالمستخدم:
+          <div
+            style={{
+              background: "#ffffff",
+              padding: "16px",
+              borderRadius: "12px",
+              border: "1px solid #e2e8f0",
+              boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+            }}
+          >
+            <h3 style={{ fontSize: "15px", fontWeight: 700, marginBottom: "12px", color: "#0f172a" }}>
+              الأطباء المرتبطين بالمستخدم ({userDoctors.length}):
             </h3>
             {userDoctors.length === 0 ? (
-              <p>لا يوجد أطباء.</p>
+              <p style={{ color: "#64748b", fontSize: "14px" }}>لا يوجد أطباء مرتبطين بهذا المستخدم حتى الآن.</p>
             ) : (
-              <table className="min-w-[400px] border">
-                <thead>
-                  <tr className="bg-gray-200">
-                    <th className="p-2 border">الطبيب</th>
-                    <th className="p-2 border">الإجراء</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {userDoctors.map((doc) => (
-                    <tr key={doc.id}>
-                      <td className="p-2 border">{doc.name}</td>
-                      <td className="p-2 border text-center">
-                        <button
-                          onClick={() => handleRemove(doc.id)}
-                          className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
-                        >
-                          حذف
-                        </button>
-                      </td>
+              <div className="table-responsive-container">
+                <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "right" }}>
+                  <thead>
+                    <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
+                      <th style={{ padding: "10px 14px", fontSize: "13px", color: "#475569" }}>اسم الطبيب</th>
+                      <th style={{ padding: "10px 14px", fontSize: "13px", color: "#475569", width: "100px", textAlign: "center" }}>الإجراء</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {userDoctors.map((doc) => (
+                      <tr key={doc.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                        <td style={{ padding: "10px 14px", fontSize: "14px", fontWeight: 500 }}>{doc.name}</td>
+                        <td style={{ padding: "10px 14px", textAlign: "center" }}>
+                          <button
+                            onClick={() => handleRemove(doc.id)}
+                            style={{
+                              backgroundColor: "#fee2e2",
+                              color: "#dc2626",
+                              border: "1px solid #fecaca",
+                              padding: "4px 10px",
+                              borderRadius: "6px",
+                              fontSize: "12px",
+                              fontWeight: 600,
+                              cursor: "pointer",
+                            }}
+                          >
+                            فك الربط
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         )}
@@ -181,25 +238,31 @@ const fetchMyDoctors = async () => {
 
   // ====== واجهة المندوب ======
   return (
-    <div className="p-6">
-      <h2 className="text-xl font-bold mb-4">الأطباء المرتبطين بي</h2>
+    <div style={{ maxWidth: "800px", margin: "0 auto" }}>
+      <h2 style={{ fontSize: "1.25rem", fontWeight: 700, marginBottom: "16px", color: "#1e293b" }}>
+        🩺 الأطباء المرتبطين بي
+      </h2>
       {userDoctors.length === 0 ? (
-        <p>لا يوجد أطباء.</p>
+        <div style={{ background: "#fff", padding: "20px", borderRadius: "12px", textAlign: "center", color: "#64748b" }}>
+          لا يوجد أطباء مرتبطين بك حالياً.
+        </div>
       ) : (
-        <table className="min-w-[400px] border">
-          <thead>
-            <tr className="bg-gray-200">
-              <th className="p-2 border">الطبيب</th>
-            </tr>
-          </thead>
-          <tbody>
-            {userDoctors.map((doc) => (
-              <tr key={doc.id}>
-                <td className="p-2 border">{doc.name}</td>
+        <div className="table-responsive-container">
+          <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "right" }}>
+            <thead>
+              <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
+                <th style={{ padding: "10px 14px", fontSize: "13px", color: "#475569" }}>اسم الطبيب</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {userDoctors.map((doc) => (
+                <tr key={doc.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                  <td style={{ padding: "12px 14px", fontSize: "14px", fontWeight: 500 }}>{doc.name}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );
