@@ -70,10 +70,11 @@ export default function CitiesTable() {
         <div
           style={{
             background: '#ffffff',
-            padding: '14px',
+            padding: '12px 14px',
             borderRadius: '10px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-            marginBottom: '16px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+            marginBottom: '14px',
+            border: '1px solid #e2e8f0',
           }}
         >
           <div className="responsive-form-row" style={{ marginBottom: 0 }}>
@@ -82,25 +83,19 @@ export default function CitiesTable() {
               placeholder="اسم المدينة الجديدة"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              style={{
-                padding: '9px 12px',
-                borderRadius: '8px',
-                border: '1px solid #cbd5e1',
-                fontSize: '14px',
-                flex: '1 1 220px',
-              }}
+              style={{ flex: '1 1 200px' }}
             />
             <button
               onClick={handleAdd}
               style={{
-                padding: '9px 18px',
                 backgroundColor: '#16a34a',
                 color: '#fff',
                 border: 'none',
-                borderRadius: '8px',
-                fontWeight: 600,
-                fontSize: '14px',
+                borderRadius: '7px',
+                fontWeight: 700,
+                fontSize: '13.5px',
                 cursor: 'pointer',
+                padding: '0 16px',
               }}
             >
               + إضافة مدينة

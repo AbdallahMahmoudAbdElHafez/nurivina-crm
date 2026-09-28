@@ -86,13 +86,14 @@ export default function ClinicsTable() {
         <div
           style={{
             background: '#ffffff',
-            padding: '16px',
-            borderRadius: '12px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-            marginBottom: '16px',
+            padding: '12px 14px',
+            borderRadius: '10px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+            marginBottom: '14px',
+            border: '1px solid #e2e8f0',
           }}
         >
-          <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '10px', color: '#334155' }}>
+          <div style={{ fontWeight: 700, fontSize: '13px', marginBottom: '8px', color: '#334155' }}>
             إضافة عيادة جديدة
           </div>
           <div className="responsive-form-row">
@@ -101,47 +102,22 @@ export default function ClinicsTable() {
               placeholder="اسم العيادة"
               value={newClinic.clinic_name}
               onChange={(e) => setNewClinic({ ...newClinic, clinic_name: e.target.value })}
-              style={{
-                padding: '9px 12px',
-                borderRadius: '8px',
-                border: '1px solid #cbd5e1',
-                fontSize: '14px',
-              }}
             />
             <input
               type="text"
               placeholder="العنوان"
               value={newClinic.address}
               onChange={(e) => setNewClinic({ ...newClinic, address: e.target.value })}
-              style={{
-                padding: '9px 12px',
-                borderRadius: '8px',
-                border: '1px solid #cbd5e1',
-                fontSize: '14px',
-              }}
             />
             <input
               type="text"
               placeholder="الهاتف"
               value={newClinic.clinic_phone}
               onChange={(e) => setNewClinic({ ...newClinic, clinic_phone: e.target.value })}
-              style={{
-                padding: '9px 12px',
-                borderRadius: '8px',
-                border: '1px solid #cbd5e1',
-                fontSize: '14px',
-              }}
             />
             <select
               value={newClinic.city_id}
               onChange={(e) => setNewClinic({ ...newClinic, city_id: e.target.value })}
-              style={{
-                padding: '9px 12px',
-                borderRadius: '8px',
-                border: '1px solid #cbd5e1',
-                fontSize: '14px',
-                backgroundColor: '#fff',
-              }}
             >
               <option value="">اختر المدينة</option>
               {cities.map((c) => (
@@ -152,14 +128,14 @@ export default function ClinicsTable() {
             </select>
             <button
               onClick={handleAdd}
+              className="form-btn-full"
               style={{
-                padding: '9px 18px',
                 backgroundColor: '#16a34a',
                 color: '#fff',
                 border: 'none',
-                borderRadius: '8px',
-                fontWeight: 600,
-                fontSize: '14px',
+                borderRadius: '7px',
+                fontWeight: 700,
+                fontSize: '13.5px',
                 cursor: 'pointer',
               }}
             >

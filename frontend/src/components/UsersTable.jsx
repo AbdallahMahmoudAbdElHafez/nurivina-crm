@@ -191,12 +191,13 @@ function UserDialog({ open, onClose, user, onSaved, allUsers }) {
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs">
-      <DialogTitle style={{ fontWeight: 700 }}>
+      <DialogTitle style={{ fontWeight: 700, fontSize: '16px', paddingBottom: '8px' }}>
         {user ? 'تعديل المستخدم' : 'إضافة مستخدم جديد'}
       </DialogTitle>
       <DialogContent>
-        <Stack spacing={2} mt={1}>
+        <Stack spacing={1.5} mt={1}>
           <TextField
+            size="small"
             label="الاسم الكامل"
             name="full_name"
             value={form.full_name}
@@ -206,6 +207,7 @@ function UserDialog({ open, onClose, user, onSaved, allUsers }) {
           />
           {!user && (
             <TextField
+              size="small"
               label="كلمة المرور"
               name="password"
               type="password"
@@ -217,6 +219,7 @@ function UserDialog({ open, onClose, user, onSaved, allUsers }) {
           )}
           <TextField
             select
+            size="small"
             label="الدور"
             name="role"
             value={form.role}
@@ -229,6 +232,7 @@ function UserDialog({ open, onClose, user, onSaved, allUsers }) {
           </TextField>
           <TextField
             select
+            size="small"
             label="المدير المباشر"
             name="manager_id"
             value={form.manager_id}
@@ -244,9 +248,9 @@ function UserDialog({ open, onClose, user, onSaved, allUsers }) {
           </TextField>
         </Stack>
       </DialogContent>
-      <DialogActions style={{ padding: '12px 24px' }}>
-        <Button onClick={onClose} color="inherit">إلغاء</Button>
-        <Button onClick={handleSubmit} variant="contained" color="success">
+      <DialogActions style={{ padding: '8px 18px 14px' }}>
+        <Button size="small" onClick={onClose} color="inherit">إلغاء</Button>
+        <Button size="small" onClick={handleSubmit} variant="contained" color="success">
           حفظ
         </Button>
       </DialogActions>

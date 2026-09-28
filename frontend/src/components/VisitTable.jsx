@@ -260,31 +260,25 @@ export default function VisitTable() {
         </h2>
       </div>
 
-      {/* نموذج إضافة زيارة - متجاوب بالكامل مع الهواتف */}
+      {/* نموذج إضافة زيارة - متجاوب ومدمج مع الهواتف */}
       <div
         style={{
           background: '#ffffff',
-          padding: '16px',
-          borderRadius: '12px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-          marginBottom: '20px',
+          padding: '12px 14px',
+          borderRadius: '10px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+          marginBottom: '14px',
+          border: '1px solid #e2e8f0',
         }}
       >
-        <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '12px', color: '#334155' }}>
-          تسجيل زيارة جديدة (يعمل أوفلاين وأونلاين)
+        <div style={{ fontWeight: 700, fontSize: '13px', marginBottom: '8px', color: '#334155' }}>
+          تسجيل زيارة جديدة (أوفلاين وأونلاين)
         </div>
 
         <div className="responsive-form-row">
           <select
             value={doctorId}
             onChange={(e) => setDoctorId(e.target.value)}
-            style={{
-              padding: '10px 12px',
-              borderRadius: '8px',
-              border: '1px solid #cbd5e1',
-              backgroundColor: '#fff',
-              fontSize: '14px',
-            }}
           >
             <option value="">اختر الطبيب</option>
             {doctors.map((doc) => (
@@ -297,13 +291,6 @@ export default function VisitTable() {
           <select
             value={clinicId}
             onChange={(e) => setClinicId(e.target.value)}
-            style={{
-              padding: '10px 12px',
-              borderRadius: '8px',
-              border: '1px solid #cbd5e1',
-              backgroundColor: '#fff',
-              fontSize: '14px',
-            }}
           >
             <option value="">اختر العيادة</option>
             {clinics.map((cl) => (
@@ -318,12 +305,6 @@ export default function VisitTable() {
             placeholder="رقم الأسبوع"
             value={weekNumber}
             onChange={(e) => setWeekNumber(e.target.value)}
-            style={{
-              padding: '10px 12px',
-              borderRadius: '8px',
-              border: '1px solid #cbd5e1',
-              fontSize: '14px',
-            }}
           />
 
           <input
@@ -331,24 +312,18 @@ export default function VisitTable() {
             placeholder="ملاحظات الزيارة"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            style={{
-              padding: '10px 12px',
-              borderRadius: '8px',
-              border: '1px solid #cbd5e1',
-              fontSize: '14px',
-            }}
           />
 
           <button
             onClick={handleAddVisit}
+            className="form-btn-full"
             style={{
-              padding: '10px 18px',
               backgroundColor: '#16a34a',
               color: '#ffffff',
               border: 'none',
-              borderRadius: '8px',
-              fontWeight: 600,
-              fontSize: '14px',
+              borderRadius: '7px',
+              fontWeight: 700,
+              fontSize: '13.5px',
               cursor: 'pointer',
               whiteSpace: 'nowrap',
               transition: 'background-color 0.2s',

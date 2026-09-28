@@ -74,9 +74,9 @@ export default function RegisterPage() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
               الاسم الكامل
             </label>
             <input
@@ -88,18 +88,13 @@ export default function RegisterPage() {
               required
               style={{
                 width: '100%',
-                padding: '12px 14px',
-                borderRadius: '8px',
-                border: '1px solid #cbd5e1',
                 boxSizing: 'border-box',
-                fontSize: '15px',
-                outline: 'none',
               }}
             />
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
               كلمة المرور
             </label>
             <input
@@ -111,12 +106,7 @@ export default function RegisterPage() {
               required
               style={{
                 width: '100%',
-                padding: '12px 14px',
-                borderRadius: '8px',
-                border: '1px solid #cbd5e1',
                 boxSizing: 'border-box',
-                fontSize: '15px',
-                outline: 'none',
               }}
             />
           </div>
@@ -128,14 +118,13 @@ export default function RegisterPage() {
               width: '100%',
               backgroundColor: '#16a34a',
               color: '#ffffff',
-              padding: '12px',
-              borderRadius: '8px',
+              borderRadius: '7px',
               border: 'none',
               fontWeight: 700,
-              fontSize: '15px',
+              fontSize: '14px',
               cursor: status === 'loading' ? 'not-allowed' : 'pointer',
               opacity: status === 'loading' ? 0.7 : 1,
-              marginTop: '8px',
+              marginTop: '6px',
               transition: 'background-color 0.2s',
             }}
           >

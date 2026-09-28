@@ -151,8 +151,9 @@ export default function VisitPlansTable() {
                 startIcon={<Add />}
                 variant="contained"
                 color="primary"
+                size="small"
                 onClick={() => setOpenDialog(true)}
-                sx={{ mb: 2 }}
+                sx={{ mb: 1.5 }}
             >
                 إضافة خطة جديدة
             </Button>
@@ -165,8 +166,8 @@ export default function VisitPlansTable() {
                     enableRowActions
                     initialState={{ density: 'compact' }}
                     renderRowActions={({ row }) => (
-                        <IconButton color="error" onClick={() => handleDelete(row.original)}>
-                            <Delete />
+                        <IconButton color="error" size="small" onClick={() => handleDelete(row.original)}>
+                            <Delete fontSize="small" />
                         </IconButton>
                     )}
                 />
@@ -174,11 +175,12 @@ export default function VisitPlansTable() {
 
             {/* Dialog لإضافة الخطة مع توافق كامل للموبايل */}
             <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
-                <DialogTitle>إضافة خطة جديدة</DialogTitle>
+                <DialogTitle sx={{ fontWeight: 700, fontSize: '16px', pb: 1 }}>إضافة خطة جديدة</DialogTitle>
                 <DialogContent>
-                    <Stack spacing={2} mt={1}>
+                    <Stack spacing={1.5} mt={1}>
                         <TextField
                             select
+                            size="small"
                             label="الطبيب"
                             value={newPlan.doctor_id}
                             onChange={(e) => setNewPlan({ ...newPlan, doctor_id: e.target.value })}
@@ -194,6 +196,7 @@ export default function VisitPlansTable() {
 
                         <TextField
                             select
+                            size="small"
                             label="العيادة"
                             value={newPlan.clinic_id}
                             onChange={(e) => setNewPlan({ ...newPlan, clinic_id: e.target.value })}
@@ -208,12 +211,14 @@ export default function VisitPlansTable() {
                         </TextField>
 
                         <TextField
+                            size="small"
                             label="Market Class"
                             value={newPlan.marketClass}
                             onChange={(e) => setNewPlan({ ...newPlan, marketClass: e.target.value })}
                             fullWidth
                         />
                         <TextField
+                            size="small"
                             type="number"
                             label="التكرار"
                             value={newPlan.visit_frequency}
@@ -221,13 +226,14 @@ export default function VisitPlansTable() {
                             fullWidth
                         />
 
-                        <Typography variant="subtitle1" fontWeight="bold">
+                        <Typography variant="subtitle2" fontWeight="bold">
                             الأيام والأوقات
                         </Typography>
 
                         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
                             <TextField
                                 select
+                                size="small"
                                 label="اليوم"
                                 value={schedule.visit_day}
                                 onChange={(e) => setSchedule({ ...schedule, visit_day: e.target.value })}
@@ -241,6 +247,7 @@ export default function VisitPlansTable() {
                                 ))}
                             </TextField>
                             <TextField
+                                size="small"
                                 type="time"
                                 label="من"
                                 value={schedule.time_from}
@@ -249,6 +256,7 @@ export default function VisitPlansTable() {
                                 InputLabelProps={{ shrink: true }}
                             />
                             <TextField
+                                size="small"
                                 type="time"
                                 label="إلى"
                                 value={schedule.time_to}
@@ -256,7 +264,7 @@ export default function VisitPlansTable() {
                                 sx={{ flex: 1 }}
                                 InputLabelProps={{ shrink: true }}
                             />
-                            <IconButton color="primary" onClick={handleAddSchedule}>
+                            <IconButton color="primary" size="small" onClick={handleAddSchedule}>
                                 <Add />
                             </IconButton>
                         </Stack>

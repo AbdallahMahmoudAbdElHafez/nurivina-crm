@@ -107,14 +107,14 @@ export default function DoctorUserManager() {
         <div
           style={{
             background: "#ffffff",
-            padding: "16px",
-            borderRadius: "12px",
-            boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-            marginBottom: "20px",
+            padding: "12px 14px",
+            borderRadius: "10px",
+            boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+            marginBottom: "14px",
             border: "1px solid #e2e8f0",
           }}
         >
-          <div style={{ fontWeight: 600, fontSize: "14px", marginBottom: "12px", color: "#334155" }}>
+          <div style={{ fontWeight: 700, fontSize: "13px", marginBottom: "8px", color: "#334155" }}>
             إضافة طبيب لمندوب
           </div>
           <div className="responsive-form-row">
@@ -124,13 +124,6 @@ export default function DoctorUserManager() {
                 setSelectedUser(e.target.value);
                 if (e.target.value) fetchUserDoctors(e.target.value);
                 else setUserDoctors([]);
-              }}
-              style={{
-                padding: "10px 12px",
-                borderRadius: "8px",
-                border: "1px solid #cbd5e1",
-                backgroundColor: "#fff",
-                fontSize: "14px",
               }}
             >
               <option value="">اختر المستخدم</option>
@@ -144,13 +137,6 @@ export default function DoctorUserManager() {
             <select
               value={selectedDoctor}
               onChange={(e) => setSelectedDoctor(e.target.value)}
-              style={{
-                padding: "10px 12px",
-                borderRadius: "8px",
-                border: "1px solid #cbd5e1",
-                backgroundColor: "#fff",
-                fontSize: "14px",
-              }}
             >
               <option value="">اختر الطبيب</option>
               {doctors.map((d) => (
@@ -162,14 +148,14 @@ export default function DoctorUserManager() {
 
             <button
               onClick={handleAssign}
+              className="form-btn-full"
               style={{
-                padding: "10px 18px",
                 backgroundColor: "#16a34a",
                 color: "#ffffff",
                 border: "none",
-                borderRadius: "8px",
-                fontWeight: 600,
-                fontSize: "14px",
+                borderRadius: "7px",
+                fontWeight: 700,
+                fontSize: "13.5px",
                 cursor: "pointer",
                 whiteSpace: "nowrap",
               }}
