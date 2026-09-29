@@ -40,6 +40,31 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.DATE,
       allowNull: true,
     },
+    status: {
+      type: DataTypes.STRING(30),
+      allowNull: false,
+      defaultValue: 'approved', // 'approved' | 'pending_approval' | 'rejected'
+    },
+    approval_type: {
+      type: DataTypes.STRING(50),
+      allowNull: true, // 'new_doctor' | 'new_clinic' | 'location_deviation'
+    },
+    rejection_reason: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    deviation_meters: {
+      type: DataTypes.FLOAT,
+      allowNull: true,
+    },
+    created_doctor_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    created_clinic_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
   }, {
     timestamps: false,
     tableName: 'visits',

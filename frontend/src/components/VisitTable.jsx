@@ -294,6 +294,8 @@ export default function VisitTable() {
   const handleAddVisit = async () => {
     let finalDoctorId = doctorId;
     let finalClinicId = clinicId;
+    let newDoctorFlag = false;
+    let newClinicFlag = false;
 
     // 1. إذا كان يتم إضافة دكتور جديد
     if (isAddingNewDoctor) {
@@ -305,6 +307,8 @@ export default function VisitTable() {
       try {
         const resDoc = await dispatch(addDoctor({ name: newDoctorName.trim() })).unwrap();
         finalDoctorId = resDoc?.id || resDoc?.doctor?.id;
+        newDoctorFlag = true;
+        newClinicFlag = true; // دكتور جديد يعني العيادة أيضاً جديدة
       } catch (err) {
         alert('حدث خطأ أثناء حفظ الطبيب الجديد: ' + err);
         setIsSubmitting(false);
@@ -331,16 +335,46 @@ export default function VisitTable() {
       return;
     }
 
+    // فحص إذا كانت العيادة جديدة (مضافة في هذه الجلسة ولم يكن دكتور جديد)
+    if (!newDoctorFlag && !newClinicFlag) {
+      const isSessionClinic = sessionAddedClinics.some(
+        (sc) => String(sc.id) === String(finalClinicId)
+      );
+      if (isSessionClinic) {
+        newClinicFlag = true;
+      }
+    }
+
+    // محاولة جلب الموقع الجغرافي الحالي تلقائياً
+    let currentCoords = null;
+    if (navigator.geolocation) {
+      try {
+        currentCoords = await new Promise((resolve) => {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+            () => resolve(null),
+            { timeout: 3000, enableHighAccuracy: true }
+          );
+        });
+      } catch (e) {
+        // تجاهل أي خطأ في الموقع للمتابعة العادية
+      }
+    }
+
     const visitData = {
       doctor_id: finalDoctorId,
       clinic_id: finalClinicId,
       week_number: Number(weekNumber),
       visit_date: new Date().toISOString().split('T')[0],
       notes,
+      is_new_doctor: newDoctorFlag,
+      is_new_clinic: newClinicFlag,
+      visit_lat: currentCoords?.lat || null,
+      visit_lng: currentCoords?.lng || null,
     };
 
     try {
-      await dispatch(addVisit(visitData));
+      const result = await dispatch(addVisit(visitData)).unwrap();
       // إعادة تعيين النموذج
       setDoctorId('');
       setClinicId('');
@@ -348,6 +382,17 @@ export default function VisitTable() {
       setNotes('');
       setIsAddingNewDoctor(false);
       setNewDoctorName('');
+      setSessionAddedClinics([]);
+
+      // عرض رسالة إذا كانت الزيارة تحتاج اعتماد
+      if (result?.status === 'pending_approval') {
+        let reasonText = 'بانتظار اعتماد المدير المباشر';
+        if (result?.approval_type === 'new_doctor') reasonText = 'طبيب جديد - بانتظار اعتماد المدير';
+        else if (result?.approval_type === 'new_clinic') reasonText = 'عيادة جديدة - بانتظار اعتماد المدير';
+        else if (result?.approval_type === 'location_deviation') reasonText = `انحراف موقع (${result?.deviation_meters}م) - بانتظار اعتماد المدير`;
+        
+        alert(`⏳ تم تسجيل الزيارة: ${reasonText}`);
+      }
     } catch (err) {
       console.error('Error adding visit:', err);
     } finally {
@@ -367,6 +412,45 @@ export default function VisitTable() {
           <span style={{ fontSize: '11px', color: '#b45309', fontWeight: 600 }}>مؤقت</span>
         ) : (
           <span>{id}</span>
+        );
+      },
+    },
+    {
+      id: 'approval_status',
+      header: 'حالة الاعتماد',
+      size: 130,
+      Cell: ({ row }) => {
+        const st = row.original.status;
+        if (st === 'pending_approval') {
+          return (
+            <span style={{
+              display: 'inline-block', padding: '3px 10px', borderRadius: '14px',
+              fontSize: '11.5px', fontWeight: 700,
+              background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a',
+            }}>
+              ⏳ بانتظار الاعتماد
+            </span>
+          );
+        }
+        if (st === 'rejected') {
+          return (
+            <span style={{
+              display: 'inline-block', padding: '3px 10px', borderRadius: '14px',
+              fontSize: '11.5px', fontWeight: 700,
+              background: '#fef2f2', color: '#dc2626', border: '1px solid #fca5a5',
+            }}>
+              ❌ مرفوضة
+            </span>
+          );
+        }
+        return (
+          <span style={{
+            display: 'inline-block', padding: '3px 10px', borderRadius: '14px',
+            fontSize: '11.5px', fontWeight: 700,
+            background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0',
+          }}>
+            ✅ معتمدة
+          </span>
         );
       },
     },

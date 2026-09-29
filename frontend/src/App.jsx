@@ -21,6 +21,7 @@ import VisitTable from "./components/VisitTable";
 import DoctorUserManager from "./components/DoctorUserManager";
 import ManagerOrAdminRoute from "./components/ManagerOrAdminRoute";
 import LocationMapPage from "./pages/LocationMapPage";
+import PendingApprovalsTable from "./components/PendingApprovalsTable";
 
 function MainLayout() {
   useOfflineSync(); // مزامنة تلقائية للبيانات والمواقع المحفوظة offline
@@ -152,6 +153,14 @@ function MainLayout() {
               element={
                 <ManagerOrAdminRoute>
                   <LocationMapPage />
+                </ManagerOrAdminRoute>
+              }
+            />
+            <Route
+              path="/pending-approvals"
+              element={
+                <ManagerOrAdminRoute>
+                  <PendingApprovalsTable />
                 </ManagerOrAdminRoute>
               }
             />

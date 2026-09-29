@@ -39,10 +39,57 @@ app.get('*', (req, res) => {
 
 const PORT = process.env.PORT || 4000;
 
+const ensureVisitColumns = async () => {
+  try {
+    const qi = db.sequelize.getQueryInterface();
+    const tableDesc = await qi.describeTable('visits');
+    if (!tableDesc.status) {
+      await qi.addColumn('visits', 'status', {
+        type: db.Sequelize.STRING(30),
+        allowNull: false,
+        defaultValue: 'approved',
+      });
+    }
+    if (!tableDesc.approval_type) {
+      await qi.addColumn('visits', 'approval_type', {
+        type: db.Sequelize.STRING(50),
+        allowNull: true,
+      });
+    }
+    if (!tableDesc.rejection_reason) {
+      await qi.addColumn('visits', 'rejection_reason', {
+        type: db.Sequelize.TEXT,
+        allowNull: true,
+      });
+    }
+    if (!tableDesc.deviation_meters) {
+      await qi.addColumn('visits', 'deviation_meters', {
+        type: db.Sequelize.FLOAT,
+        allowNull: true,
+      });
+    }
+    if (!tableDesc.created_doctor_id) {
+      await qi.addColumn('visits', 'created_doctor_id', {
+        type: db.Sequelize.INTEGER,
+        allowNull: true,
+      });
+    }
+    if (!tableDesc.created_clinic_id) {
+      await qi.addColumn('visits', 'created_clinic_id', {
+        type: db.Sequelize.INTEGER,
+        allowNull: true,
+      });
+    }
+  } catch (err) {
+    console.error('Error ensuring visit columns:', err.message);
+  }
+};
+
 if (process.env.VERCEL !== '1') {
   db.sequelize.sync({ force: false })
-    .then(() => {
-      console.log('Database synced');
+    .then(async () => {
+      await ensureVisitColumns();
+      console.log('Database synced & columns verified');
       app.listen(PORT, () => {
         console.log(`Server running on port ${PORT}`);
       });

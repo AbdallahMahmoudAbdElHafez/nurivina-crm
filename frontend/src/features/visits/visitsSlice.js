@@ -100,9 +100,40 @@ export const deleteVisit = createAsyncThunk('visits/delete', async (id) => {
   return id;
 });
 
+// ─── نظام الاعتماد ─────────────────────────────────────────────────────────
+export const fetchPendingApprovals = createAsyncThunk(
+  'visits/fetchPendingApprovals',
+  async () => {
+    const res = await api.get('/visits/pending-approvals');
+    return res.data;
+  }
+);
+
+export const approveVisitAction = createAsyncThunk(
+  'visits/approve',
+  async (visitId) => {
+    const res = await api.put(`/visits/${visitId}/approve`);
+    return res.data.visit;
+  }
+);
+
+export const rejectVisitAction = createAsyncThunk(
+  'visits/reject',
+  async ({ visitId, rejection_reason }) => {
+    await api.put(`/visits/${visitId}/reject`, { rejection_reason });
+    return visitId;
+  }
+);
+
 const visitsSlice = createSlice({
   name: 'visits',
-  initialState: { list: [], status: 'idle', error: null },
+  initialState: {
+    list: [],
+    pendingApprovals: [],
+    status: 'idle',
+    pendingStatus: 'idle',
+    error: null,
+  },
   reducers: {
     // تحديث زيارة في الحالة مباشرة (مثل تسجيل الموقع أوفلاين)
     updateVisitLocally(state, action) {
@@ -134,6 +165,34 @@ const visitsSlice = createSlice({
         if (idx >= 0) state.list[idx] = action.payload;
       })
       .addCase(deleteVisit.fulfilled, (state, action) => {
+        state.list = state.list.filter((v) => v.visit_id !== action.payload);
+      })
+      // ─── Pending Approvals ─────────────────────────────────
+      .addCase(fetchPendingApprovals.pending, (state) => {
+        state.pendingStatus = 'loading';
+      })
+      .addCase(fetchPendingApprovals.fulfilled, (state, action) => {
+        state.pendingStatus = 'succeeded';
+        state.pendingApprovals = action.payload;
+      })
+      .addCase(fetchPendingApprovals.rejected, (state) => {
+        state.pendingStatus = 'failed';
+      })
+      .addCase(approveVisitAction.fulfilled, (state, action) => {
+        // نقل الزيارة من المعلّق إلى المعتمد
+        state.pendingApprovals = state.pendingApprovals.filter(
+          (v) => v.visit_id !== action.payload.visit_id
+        );
+        // تحديثها في القائمة الرئيسية إن وجدت
+        const idx = state.list.findIndex((v) => v.visit_id === action.payload.visit_id);
+        if (idx >= 0) state.list[idx] = action.payload;
+      })
+      .addCase(rejectVisitAction.fulfilled, (state, action) => {
+        // حذف الزيارة من قائمة المعلّقات
+        state.pendingApprovals = state.pendingApprovals.filter(
+          (v) => v.visit_id !== action.payload
+        );
+        // حذفها أيضاً من القائمة الرئيسية
         state.list = state.list.filter((v) => v.visit_id !== action.payload);
       });
   },

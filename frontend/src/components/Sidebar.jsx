@@ -60,6 +60,7 @@ export default function Sidebar({ isOpen = true, onClose, isMobile = false }) {
     { to: "/visits", label: "الزيارات والمواقع", icon: "📅" },
     ...(user?.role === "admin" || user?.role === "manager"
       ? [
+          { to: "/pending-approvals", label: "الاعتمادات المعلّقة", icon: "⏳" },
           { to: "/doctor-user-manager", label: "ربط الأطباء بالمندوبين", icon: "🔗" },
           { to: "/location-map", label: "خريطة المواقع", icon: "🗺" },
         ]

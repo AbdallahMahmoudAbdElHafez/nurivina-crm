@@ -4,6 +4,18 @@ const { getAccessibleUserIds } = require('../utils/hierarchy');
 
 const Visit = db.visit;
 
+// ─── حساب المسافة بين نقطتين (Haversine بالمتر) ─────────────────────────────
+function haversineMeters(lat1, lon1, lat2, lon2) {
+  const R = 6371000; // نصف قطر الأرض بالمتر
+  const toRad = (deg) => (deg * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 // إرجاع الزيارات حسب الصلاحيات والهيكل الإداري:
 // 1. الأدمن: يرى جميع الزيارات لكل المستخدمين
 // 2. المدير: يرى زياراته وزيارات كل المستخدمين التابعين له
@@ -55,11 +67,76 @@ const getOne = async (req, res, next) => {
   }
 };
 
-// تسجيل زيارة جديدة (ترتبط تلقائيًا بالمستخدم الحالي)
+// ─── تسجيل زيارة جديدة مع نظام الاعتماد ─────────────────────────────────────
 const createVisit = async (req, res, next) => {
   try {
     const user_id = req.user.user_id;
-    const { doctor_id, clinic_id, visit_date, week_number, notes } = req.body;
+    const {
+      doctor_id,
+      clinic_id,
+      visit_date,
+      week_number,
+      notes,
+      is_new_doctor,   // هل الطبيب جديد (أضافه المندوب في هذه الزيارة)
+      is_new_clinic,   // هل العيادة جديدة (أضافها المندوب في هذه الزيارة)
+      visit_lat,       // موقع الزيارة الحالي
+      visit_lng,
+    } = req.body;
+
+    let status = 'approved';
+    let approval_type = null;
+    let deviation_meters = null;
+    let created_doctor_id = null;
+    let created_clinic_id = null;
+
+    // ──────────────────────────────────────────────────────────
+    // الحالة 1: دكتور جديد → يحتاج اعتماد المدير
+    // ──────────────────────────────────────────────────────────
+    if (is_new_doctor) {
+      status = 'pending_approval';
+      approval_type = 'new_doctor';
+      created_doctor_id = doctor_id;
+      created_clinic_id = clinic_id;
+    }
+    // ──────────────────────────────────────────────────────────
+    // الحالة 2: دكتور موجود + عيادة جديدة → يحتاج اعتماد المدير
+    // ──────────────────────────────────────────────────────────
+    else if (is_new_clinic) {
+      status = 'pending_approval';
+      approval_type = 'new_clinic';
+      created_clinic_id = clinic_id;
+    }
+    // ──────────────────────────────────────────────────────────
+    // الحالة 3: دكتور موجود + عيادة موجودة → فحص انحراف الموقع
+    // ──────────────────────────────────────────────────────────
+    else if (visit_lat && visit_lng) {
+      // البحث عن آخر زيارة لنفس الدكتور ونفس العيادة تم فيها مشاركة الموقع
+      const previousVisit = await Visit.findOne({
+        where: {
+          doctor_id,
+          clinic_id,
+          shared_lat: { [Op.not]: null },
+          shared_lng: { [Op.not]: null },
+          status: 'approved',
+        },
+        order: [['visit_id', 'DESC']],
+      });
+
+      if (previousVisit) {
+        const distance = haversineMeters(
+          visit_lat,
+          visit_lng,
+          previousVisit.shared_lat,
+          previousVisit.shared_lng
+        );
+
+        if (distance > 50) {
+          status = 'pending_approval';
+          approval_type = 'location_deviation';
+          deviation_meters = Math.round(distance);
+        }
+      }
+    }
 
     const visit = await Visit.create({
       user_id,
@@ -68,6 +145,15 @@ const createVisit = async (req, res, next) => {
       visit_date,
       week_number,
       notes,
+      status,
+      approval_type,
+      deviation_meters,
+      created_doctor_id,
+      created_clinic_id,
+      // حفظ الموقع الحالي مباشرة إذا أرسله المندوب مع الزيارة
+      shared_lat: visit_lat || null,
+      shared_lng: visit_lng || null,
+      shared_at: (visit_lat && visit_lng) ? new Date() : null,
     });
 
     const fullVisit = await Visit.findByPk(visit.visit_id, {
@@ -78,7 +164,12 @@ const createVisit = async (req, res, next) => {
       ],
     });
 
-    res.status(201).json({ message: 'تم إنشاء الزيارة بنجاح', visit: fullVisit });
+    const message =
+      status === 'pending_approval'
+        ? 'تم إنشاء الزيارة وهي بانتظار اعتماد المدير'
+        : 'تم إنشاء الزيارة بنجاح';
+
+    res.status(201).json({ message, visit: fullVisit });
   } catch (err) {
     next(err);
   }
@@ -190,13 +281,58 @@ const shareLocation = async (req, res, next) => {
       return res.status(403).json({ message: 'ليس لديك صلاحية لمشاركة موقع هذه الزيارة' });
     }
 
+    let status = visit.status;
+    let approval_type = visit.approval_type;
+    let deviation_meters = visit.deviation_meters;
+
+    // فحص انحراف الموقع إذا كانت الزيارة غير معلقة على سبب آخر
+    if (!approval_type || approval_type === 'location_deviation') {
+      const previousVisit = await Visit.findOne({
+        where: {
+          doctor_id: visit.doctor_id,
+          clinic_id: visit.clinic_id,
+          visit_id: { [Op.ne]: visit.visit_id },
+          shared_lat: { [Op.not]: null },
+          shared_lng: { [Op.not]: null },
+          status: 'approved',
+        },
+        order: [['visit_id', 'DESC']],
+      });
+
+      if (previousVisit) {
+        const distance = haversineMeters(
+          lat,
+          lng,
+          previousVisit.shared_lat,
+          previousVisit.shared_lng
+        );
+
+        if (distance > 50) {
+          status = 'pending_approval';
+          approval_type = 'location_deviation';
+          deviation_meters = Math.round(distance);
+        }
+      }
+    }
+
     await visit.update({
       shared_lat: lat,
       shared_lng: lng,
       shared_at: sharedAt ? new Date(sharedAt) : new Date(),
+      status,
+      approval_type,
+      deviation_meters,
     });
 
-    res.json({ message: 'تم حفظ الموقع بنجاح', visit });
+    const updatedVisit = await Visit.findByPk(id, {
+      include: [
+        { model: db.user, as: 'user', attributes: ['user_id', 'full_name', 'role'] },
+        { model: db.doctor, as: 'doctor', attributes: ['id', 'name'] },
+        { model: db.clinic, as: 'clinic', attributes: ['id', 'clinic_name'] },
+      ],
+    });
+
+    res.json({ message: 'تم حفظ الموقع بنجاح', visit: updatedVisit });
   } catch (err) {
     next(err);
   }
@@ -269,6 +405,152 @@ const getClinicsByDoctor = async (req, res, next) => {
   }
 };
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// ─── نظام الاعتماد (Approval System) ─────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// جلب الزيارات المعلّقة التي تنتظر اعتماد المدير/الأدمن
+const getPendingApprovals = async (req, res, next) => {
+  try {
+    const accessibleUserIds = await getAccessibleUserIds(req.user);
+
+    const whereClause = { status: 'pending_approval' };
+    if (accessibleUserIds !== null) {
+      // المدير يرى فقط طلبات المندوبين التابعين له (ليس طلباته هو)
+      const subordinateIds = accessibleUserIds.filter((id) => id !== req.user.user_id);
+      if (subordinateIds.length === 0) {
+        return res.json([]);
+      }
+      whereClause.user_id = { [Op.in]: subordinateIds };
+    }
+
+    const visits = await Visit.findAll({
+      where: whereClause,
+      include: [
+        { model: db.user, as: 'user', attributes: ['user_id', 'full_name', 'role'] },
+        { model: db.doctor, as: 'doctor', attributes: ['id', 'name'] },
+        { model: db.clinic, as: 'clinic', attributes: ['id', 'clinic_name', 'address'] },
+      ],
+      order: [['visit_id', 'DESC']],
+    });
+
+    res.json(visits);
+  } catch (err) {
+    next(err);
+  }
+};
+
+// اعتماد زيارة معلّقة
+const approveVisit = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const visit = await Visit.findByPk(id);
+    if (!visit) return res.status(404).json({ message: 'الزيارة غير موجودة' });
+
+    if (visit.status !== 'pending_approval') {
+      return res.status(400).json({ message: 'هذه الزيارة ليست في حالة انتظار الاعتماد' });
+    }
+
+    // التحقق من أن المدير لديه صلاحية على مندوب هذه الزيارة
+    const accessibleUserIds = await getAccessibleUserIds(req.user);
+    if (accessibleUserIds !== null && !accessibleUserIds.includes(visit.user_id)) {
+      return res.status(403).json({ message: 'ليس لديك صلاحية لاعتماد هذه الزيارة' });
+    }
+
+    await visit.update({ status: 'approved' });
+
+    const updatedVisit = await Visit.findByPk(id, {
+      include: [
+        { model: db.user, as: 'user', attributes: ['user_id', 'full_name', 'role'] },
+        { model: db.doctor, as: 'doctor', attributes: ['id', 'name'] },
+        { model: db.clinic, as: 'clinic', attributes: ['id', 'clinic_name'] },
+      ],
+    });
+
+    res.json({ message: 'تم اعتماد الزيارة بنجاح', visit: updatedVisit });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// رفض زيارة معلّقة (مع حذف الدكتور أو العيادة الجديدة حسب نوع الطلب)
+const rejectVisit = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { rejection_reason } = req.body;
+
+    const visit = await Visit.findByPk(id);
+    if (!visit) return res.status(404).json({ message: 'الزيارة غير موجودة' });
+
+    if (visit.status !== 'pending_approval') {
+      return res.status(400).json({ message: 'هذه الزيارة ليست في حالة انتظار الاعتماد' });
+    }
+
+    // التحقق من أن المدير لديه صلاحية على مندوب هذه الزيارة
+    const accessibleUserIds = await getAccessibleUserIds(req.user);
+    if (accessibleUserIds !== null && !accessibleUserIds.includes(visit.user_id)) {
+      return res.status(403).json({ message: 'ليس لديك صلاحية لرفض هذه الزيارة' });
+    }
+
+    // ──────────────────────────────────────────────────────────
+    // حذف الدكتور الجديد إذا كان نوع الطلب "new_doctor"
+    // (فقط إذا لم تكن هناك زيارات أخرى معتمدة لهذا الدكتور)
+    // ──────────────────────────────────────────────────────────
+    if (visit.approval_type === 'new_doctor' && visit.created_doctor_id) {
+      const otherVisits = await Visit.count({
+        where: {
+          doctor_id: visit.created_doctor_id,
+          visit_id: { [Op.ne]: visit.visit_id },
+          status: { [Op.ne]: 'rejected' },
+        },
+      });
+      if (otherVisits === 0) {
+        // حذف العيادة الجديدة المرتبطة أيضاً
+        if (visit.created_clinic_id) {
+          const otherClinicVisits = await Visit.count({
+            where: {
+              clinic_id: visit.created_clinic_id,
+              visit_id: { [Op.ne]: visit.visit_id },
+              status: { [Op.ne]: 'rejected' },
+            },
+          });
+          if (otherClinicVisits === 0) {
+            await db.clinic.destroy({ where: { id: visit.created_clinic_id } });
+          }
+        }
+        await db.doctor.destroy({ where: { id: visit.created_doctor_id } });
+      }
+    }
+
+    // ──────────────────────────────────────────────────────────
+    // حذف العيادة الجديدة إذا كان نوع الطلب "new_clinic"
+    // (فقط إذا لم تكن هناك زيارات أخرى معتمدة لهذه العيادة)
+    // ──────────────────────────────────────────────────────────
+    if (visit.approval_type === 'new_clinic' && visit.created_clinic_id) {
+      const otherVisits = await Visit.count({
+        where: {
+          clinic_id: visit.created_clinic_id,
+          visit_id: { [Op.ne]: visit.visit_id },
+          status: { [Op.ne]: 'rejected' },
+        },
+      });
+      if (otherVisits === 0) {
+        await db.clinic.destroy({ where: { id: visit.created_clinic_id } });
+      }
+    }
+
+    // تحديث حالة الزيارة إلى "مرفوضة"
+    await visit.update({
+      status: 'rejected',
+      rejection_reason: rejection_reason || 'مرفوض من المدير',
+    });
+
+    res.json({ message: 'تم رفض الزيارة بنجاح' });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   getAll,
   getOne,
@@ -279,6 +561,7 @@ module.exports = {
   shareLocation,
   getSharedLocations,
   getClinicsByDoctor,
+  getPendingApprovals,
+  approveVisit,
+  rejectVisit,
 };
-
-
