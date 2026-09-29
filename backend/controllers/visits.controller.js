@@ -232,6 +232,43 @@ const getSharedLocations = async (req, res, next) => {
   }
 };
 
+// ─── جلب العيادات المرتبطة بدكتور محدد من جدول الزيارات ───────────────────────
+const getClinicsByDoctor = async (req, res, next) => {
+  try {
+    const { doctor_id } = req.params;
+    const accessibleUserIds = await getAccessibleUserIds(req.user);
+
+    const whereClause = { doctor_id };
+    if (accessibleUserIds !== null) {
+      whereClause.user_id = { [Op.in]: accessibleUserIds };
+    }
+
+    const visits = await Visit.findAll({
+      where: whereClause,
+      include: [
+        {
+          model: db.clinic,
+          as: 'clinic',
+          attributes: ['id', 'clinic_name', 'address', 'clinic_phone', 'city_id'],
+        },
+      ],
+      attributes: ['clinic_id'],
+      order: [['visit_id', 'DESC']],
+    });
+
+    const clinicMap = new Map();
+    visits.forEach((v) => {
+      if (v.clinic && !clinicMap.has(v.clinic.id)) {
+        clinicMap.set(v.clinic.id, v.clinic);
+      }
+    });
+
+    res.json(Array.from(clinicMap.values()));
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   getAll,
   getOne,
@@ -241,5 +278,7 @@ module.exports = {
   getAvailableDoctorsToday,
   shareLocation,
   getSharedLocations,
+  getClinicsByDoctor,
 };
+
 
