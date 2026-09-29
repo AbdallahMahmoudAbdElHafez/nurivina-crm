@@ -1,7 +1,7 @@
 // public/sw.js
 // Service Worker لتخزين ملفات التطبيق (App Shell) وتشغيله بالكامل بدون اتصال بالإنترنت
 
-const CACHE_NAME = 'crm-app-shell-v1';
+const CACHE_NAME = 'crm-app-shell-v2';
 
 // الأصول الأساسية التي تُخزن عند تثبيت الـ Service Worker
 const PRECACHE_URLS = [
