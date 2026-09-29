@@ -1,4 +1,7 @@
 const db = require('../models');
+const { Op } = require('sequelize');
+const { getAccessibleUserIds } = require('../utils/hierarchy');
+
 const VisitPlan = db.visit_plan;
 const Doctor = db.doctor;
 const Clinic = db.clinic;
@@ -8,12 +11,14 @@ const Schedule = db.visit_plan_schedule;
 const create = async (req, res, next) => {
   try {
     const { doctor_id, clinic_id, marketClass, visit_frequency, schedules } = req.body;
+    const user_id = req.user?.user_id;
 
     if (!doctor_id || !schedules || schedules.length === 0) {
       return res.status(400).json({ message: 'الطبيب وجدول المواعيد مطلوبان' });
     }
 
     const plan = await VisitPlan.create({
+      user_id,
       doctor_id,
       clinic_id,
       marketClass,
@@ -44,10 +49,17 @@ const create = async (req, res, next) => {
   }
 };
 
-// عرض جميع الخطط مع المواعيد
+// عرض الخطط حسب الصلاحيات (أدمن: الكل، مدير: فريقه، مندوب: خططه فقط)
 const getAll = async (req, res, next) => {
   try {
+    const accessibleUserIds = await getAccessibleUserIds(req.user);
+    const whereClause = {};
+    if (accessibleUserIds !== null) {
+      whereClause.user_id = { [Op.in]: accessibleUserIds };
+    }
+
     const plans = await VisitPlan.findAll({
+      where: whereClause,
       include: [
         { model: Doctor, as: 'doctor', attributes: ['id', 'name'] },
         { model: Clinic, as: 'clinic', attributes: ['id', 'clinic_name'] },
@@ -60,7 +72,7 @@ const getAll = async (req, res, next) => {
   }
 };
 
-// عرض خطة واحدة
+// عرض خطة واحدة مع التحقق من الصلاحية
 const getOne = async (req, res, next) => {
   try {
     const plan = await VisitPlan.findByPk(req.params.id, {
@@ -71,17 +83,28 @@ const getOne = async (req, res, next) => {
       ],
     });
     if (!plan) return res.status(404).json({ message: 'الخطة غير موجودة' });
+
+    const accessibleUserIds = await getAccessibleUserIds(req.user);
+    if (accessibleUserIds !== null && !accessibleUserIds.includes(plan.user_id)) {
+      return res.status(403).json({ message: 'ليس لديك صلاحية لعرض هذه الخطة' });
+    }
+
     res.json(plan);
   } catch (err) {
     next(err);
   }
 };
 
-// تحديث خطة زيارة ومواعيدها
+// تحديث خطة زيارة ومواعيدها مع التحقق من الصلاحية
 const update = async (req, res, next) => {
   try {
     const plan = await VisitPlan.findByPk(req.params.id);
     if (!plan) return res.status(404).json({ message: 'الخطة غير موجودة' });
+
+    const accessibleUserIds = await getAccessibleUserIds(req.user);
+    if (accessibleUserIds !== null && !accessibleUserIds.includes(plan.user_id)) {
+      return res.status(403).json({ message: 'ليس لديك صلاحية لتعديل هذه الخطة' });
+    }
 
     const { doctor_id, clinic_id, marketClass, visit_frequency, schedules } = req.body;
 
@@ -113,11 +136,18 @@ const update = async (req, res, next) => {
   }
 };
 
-// حذف خطة زيارة كاملة مع المواعيد التابعة
+// حذف خطة زيارة مع التحقق من الصلاحية
 const remove = async (req, res, next) => {
   try {
-    const deleted = await VisitPlan.destroy({ where: { id: req.params.id } });
-    if (!deleted) return res.status(404).json({ message: 'الخطة غير موجودة' });
+    const plan = await VisitPlan.findByPk(req.params.id);
+    if (!plan) return res.status(404).json({ message: 'الخطة غير موجودة' });
+
+    const accessibleUserIds = await getAccessibleUserIds(req.user);
+    if (accessibleUserIds !== null && !accessibleUserIds.includes(plan.user_id)) {
+      return res.status(403).json({ message: 'ليس لديك صلاحية لحذف هذه الخطة' });
+    }
+
+    await VisitPlan.destroy({ where: { id: req.params.id } });
     res.json({ message: 'تم حذف الخطة بنجاح' });
   } catch (err) {
     next(err);
@@ -125,3 +155,4 @@ const remove = async (req, res, next) => {
 };
 
 module.exports = { create, getAll, getOne, update, remove };
+
