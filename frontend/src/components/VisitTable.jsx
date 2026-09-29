@@ -573,14 +573,14 @@ export default function VisitTable() {
                       background: '#f0fdf4',
                       border: '1px solid #86efac',
                       borderRadius: '8px',
-                      padding: '6px 10px',
+                      padding: '8px 12px',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       gap: '8px',
                     }}
                   >
-                    <div style={{ fontSize: '12.5px', color: '#166534', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <div style={{ fontSize: '13px', color: '#166534', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       🏥 {selectedClinicObj.clinic_name}
                       {selectedClinicObj.city?.name ? ` (${selectedClinicObj.city.name})` : ''}
                     </div>
@@ -591,15 +591,18 @@ export default function VisitTable() {
                         background: '#dcfce7',
                         border: '1px solid #86efac',
                         color: '#15803d',
-                        borderRadius: '5px',
-                        padding: '2px 8px',
-                        fontSize: '11px',
+                        borderRadius: '6px',
+                        padding: '4px 10px',
+                        fontSize: '12px',
+                        lineHeight: 1.3,
+                        minHeight: '28px',
+                        height: 'auto',
                         cursor: 'pointer',
                         fontWeight: 700,
                         whiteSpace: 'nowrap',
                       }}
                     >
-                      ✏️ تغيير / إضافة أخرى
+                      ✏️ تغيير / إضافة
                     </button>
                   </div>
                 ) : (
@@ -607,25 +610,30 @@ export default function VisitTable() {
                     type="button"
                     onClick={() => setIsClinicModalOpen(true)}
                     style={{
-                      backgroundColor: '#10b981',
+                      backgroundColor: '#059669',
                       color: '#ffffff',
                       border: 'none',
-                      borderRadius: '7px',
-                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      padding: '8px 14px',
                       fontWeight: 700,
                       fontSize: '13px',
+                      lineHeight: 1.4,
+                      minHeight: '40px',
+                      height: 'auto',
                       cursor: 'pointer',
-                      display: 'flex',
+                      display: 'inline-flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       gap: '6px',
-                      boxShadow: '0 1px 3px rgba(16, 185, 129, 0.2)',
+                      width: '100%',
+                      boxShadow: '0 2px 5px rgba(5, 150, 105, 0.25)',
+                      textAlign: 'center',
                     }}
                   >
-                    🏥 + إضافة عيادة جديدة لهذا الطبيب (دايلوج كامل)
+                    🏥 + إضافة عيادة جديدة لهذا الطبيب
                   </button>
                 )}
-                <span style={{ fontSize: '11px', color: '#059669', fontWeight: 600 }}>
+                <span style={{ fontSize: '11.5px', color: '#059669', fontWeight: 600 }}>
                   ✍️ هذا الطبيب جديد، يجب إضافة عيادة جديدة له بكامل تفاصيلها
                 </span>
               </div>
@@ -692,6 +700,9 @@ export default function VisitTable() {
                 cursor: isSubmitting ? 'not-allowed' : 'pointer',
                 whiteSpace: 'nowrap',
                 padding: '9px 18px',
+                minHeight: '38px',
+                height: 'auto',
+                lineHeight: 1.4,
                 transition: 'background-color 0.2s',
                 opacity: isSubmitting ? 0.7 : 1,
               }}
@@ -705,18 +716,18 @@ export default function VisitTable() {
         {doctorId && !isAddingNewDoctor && associatedClinics.length > 0 && (
           <div
             style={{
-              marginTop: '10px',
-              padding: '8px 12px',
+              marginTop: '12px',
+              padding: '10px 14px',
               background: '#f8fafc',
-              borderRadius: '8px',
+              borderRadius: '10px',
               border: '1px dashed #cbd5e1',
               display: 'flex',
               alignItems: 'center',
               flexWrap: 'wrap',
-              gap: '6px',
+              gap: '8px',
             }}
           >
-            <span style={{ fontSize: '12px', color: '#475569', fontWeight: 600 }}>
+            <span style={{ fontSize: '12.5px', color: '#334155', fontWeight: 700 }}>
               ⭐ عيادات الطبيب المسجلة:
             </span>
             {associatedClinics.map((ac) => {
@@ -730,11 +741,18 @@ export default function VisitTable() {
                     backgroundColor: isSelected ? '#2563eb' : '#eff6ff',
                     color: isSelected ? '#ffffff' : '#1d4ed8',
                     border: `1px solid ${isSelected ? '#1d4ed8' : '#bfdbfe'}`,
-                    borderRadius: '16px',
-                    padding: '3px 12px',
-                    fontSize: '12px',
+                    borderRadius: '20px',
+                    padding: '5px 14px',
+                    fontSize: '12.5px',
+                    lineHeight: 1.4,
+                    minHeight: '32px',
+                    height: 'auto',
                     cursor: 'pointer',
                     fontWeight: 600,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    whiteSpace: 'nowrap',
                     transition: 'all 0.15s ease-in-out',
                   }}
                 >
@@ -746,14 +764,22 @@ export default function VisitTable() {
               type="button"
               onClick={() => setIsClinicModalOpen(true)}
               style={{
-                backgroundColor: '#f0fdf4',
-                color: '#15803d',
-                border: '1px dashed #86efac',
-                borderRadius: '16px',
-                padding: '3px 10px',
-                fontSize: '11.5px',
+                backgroundColor: '#ecfdf5',
+                color: '#047857',
+                border: '1.5px dashed #059669',
+                borderRadius: '20px',
+                padding: '5px 14px',
+                fontSize: '12.5px',
+                lineHeight: 1.4,
+                minHeight: '32px',
+                height: 'auto',
                 cursor: 'pointer',
                 fontWeight: 700,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                whiteSpace: 'nowrap',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
               }}
             >
               ➕ عيادة جديدة لهذا الطبيب

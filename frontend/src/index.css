@@ -62,7 +62,10 @@ button {
   font-size: 13.5px;
   user-select: none;
   touch-action: manipulation;
-  height: 38px;
+  min-height: 38px;
+  height: auto;
+  line-height: 1.4;
+  padding: 6px 12px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
