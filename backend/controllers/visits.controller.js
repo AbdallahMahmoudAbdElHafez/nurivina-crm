@@ -71,6 +71,7 @@ const getOne = async (req, res, next) => {
 const createVisit = async (req, res, next) => {
   try {
     const user_id = req.user.user_id;
+    const user_role = req.user.role;
     const {
       doctor_id,
       clinic_id,
@@ -79,7 +80,7 @@ const createVisit = async (req, res, next) => {
       notes,
       is_new_doctor,   // هل الطبيب جديد (أضافه المندوب في هذه الزيارة)
       is_new_clinic,   // هل العيادة جديدة (أضافها المندوب في هذه الزيارة)
-      visit_lat,       // موقع الزيارة الحالي
+      visit_lat,
       visit_lng,
     } = req.body;
 
@@ -89,52 +90,20 @@ const createVisit = async (req, res, next) => {
     let created_doctor_id = null;
     let created_clinic_id = null;
 
-    // ──────────────────────────────────────────────────────────
-    // الحالة 1: دكتور جديد → يحتاج اعتماد المدير
-    // ──────────────────────────────────────────────────────────
-    if (is_new_doctor) {
-      status = 'pending_approval';
-      approval_type = 'new_doctor';
-      created_doctor_id = doctor_id;
-      created_clinic_id = clinic_id;
-    }
-    // ──────────────────────────────────────────────────────────
-    // الحالة 2: دكتور موجود + عيادة جديدة → يحتاج اعتماد المدير
-    // ──────────────────────────────────────────────────────────
-    else if (is_new_clinic) {
-      status = 'pending_approval';
-      approval_type = 'new_clinic';
-      created_clinic_id = clinic_id;
-    }
-    // ──────────────────────────────────────────────────────────
-    // الحالة 3: دكتور موجود + عيادة موجودة → فحص انحراف الموقع
-    // ──────────────────────────────────────────────────────────
-    else if (visit_lat && visit_lng) {
-      // البحث عن آخر زيارة لنفس الدكتور ونفس العيادة تم فيها مشاركة الموقع
-      const previousVisit = await Visit.findOne({
-        where: {
-          doctor_id,
-          clinic_id,
-          shared_lat: { [Op.not]: null },
-          shared_lng: { [Op.not]: null },
-          status: 'approved',
-        },
-        order: [['visit_id', 'DESC']],
-      });
-
-      if (previousVisit) {
-        const distance = haversineMeters(
-          visit_lat,
-          visit_lng,
-          previousVisit.shared_lat,
-          previousVisit.shared_lng
-        );
-
-        if (distance > 50) {
-          status = 'pending_approval';
-          approval_type = 'location_deviation';
-          deviation_meters = Math.round(distance);
-        }
+    // الأدمن دائمًا معتمد تلقائيًا
+    if (user_role !== 'admin') {
+      // الحالة 1: دكتور جديد → يحتاج اعتماد المدير
+      if (is_new_doctor) {
+        status = 'pending_approval';
+        approval_type = 'new_doctor';
+        created_doctor_id = doctor_id;
+        created_clinic_id = clinic_id;
+      }
+      // الحالة 2: دكتور موجود + عيادة جديدة → يحتاج اعتماد المدير
+      else if (is_new_clinic) {
+        status = 'pending_approval';
+        approval_type = 'new_clinic';
+        created_clinic_id = clinic_id;
       }
     }
 
@@ -150,7 +119,6 @@ const createVisit = async (req, res, next) => {
       deviation_meters,
       created_doctor_id,
       created_clinic_id,
-      // حفظ الموقع الحالي مباشرة إذا أرسله المندوب مع الزيارة
       shared_lat: visit_lat || null,
       shared_lng: visit_lng || null,
       shared_at: (visit_lat && visit_lng) ? new Date() : null,
@@ -416,12 +384,7 @@ const getPendingApprovals = async (req, res, next) => {
 
     const whereClause = { status: 'pending_approval' };
     if (accessibleUserIds !== null) {
-      // المدير يرى فقط طلبات المندوبين التابعين له (ليس طلباته هو)
-      const subordinateIds = accessibleUserIds.filter((id) => id !== req.user.user_id);
-      if (subordinateIds.length === 0) {
-        return res.json([]);
-      }
-      whereClause.user_id = { [Op.in]: subordinateIds };
+      whereClause.user_id = { [Op.in]: accessibleUserIds };
     }
 
     const visits = await Visit.findAll({

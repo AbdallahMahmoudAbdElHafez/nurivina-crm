@@ -345,22 +345,6 @@ export default function VisitTable() {
       }
     }
 
-    // محاولة جلب الموقع الجغرافي الحالي تلقائياً
-    let currentCoords = null;
-    if (navigator.geolocation) {
-      try {
-        currentCoords = await new Promise((resolve) => {
-          navigator.geolocation.getCurrentPosition(
-            (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-            () => resolve(null),
-            { timeout: 3000, enableHighAccuracy: true }
-          );
-        });
-      } catch (e) {
-        // تجاهل أي خطأ في الموقع للمتابعة العادية
-      }
-    }
-
     const visitData = {
       doctor_id: finalDoctorId,
       clinic_id: finalClinicId,
@@ -369,8 +353,6 @@ export default function VisitTable() {
       notes,
       is_new_doctor: newDoctorFlag,
       is_new_clinic: newClinicFlag,
-      visit_lat: currentCoords?.lat || null,
-      visit_lng: currentCoords?.lng || null,
     };
 
     try {
@@ -418,17 +400,24 @@ export default function VisitTable() {
     {
       id: 'approval_status',
       header: 'حالة الاعتماد',
-      size: 130,
+      size: 140,
       Cell: ({ row }) => {
-        const st = row.original.status;
+        const st = row.original.status || 'approved';
         if (st === 'pending_approval') {
+          const type = row.original.approval_type;
+          let label = '⏳ بانتظار الاعتماد';
+          if (type === 'new_doctor') label = '🩺 دكتور جديد (معلّق)';
+          else if (type === 'new_clinic') label = '🏥 عيادة جديدة (معلّقة)';
+          else if (type === 'location_deviation') label = `📍 انحراف موقع (${row.original.deviation_meters || ''}م)`;
+
           return (
             <span style={{
               display: 'inline-block', padding: '3px 10px', borderRadius: '14px',
-              fontSize: '11.5px', fontWeight: 700,
+              fontSize: '11px', fontWeight: 700,
               background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a',
+              whiteSpace: 'nowrap',
             }}>
-              ⏳ بانتظار الاعتماد
+              {label}
             </span>
           );
         }
@@ -436,9 +425,10 @@ export default function VisitTable() {
           return (
             <span style={{
               display: 'inline-block', padding: '3px 10px', borderRadius: '14px',
-              fontSize: '11.5px', fontWeight: 700,
+              fontSize: '11px', fontWeight: 700,
               background: '#fef2f2', color: '#dc2626', border: '1px solid #fca5a5',
-            }}>
+              whiteSpace: 'nowrap',
+            }} title={row.original.rejection_reason || 'تم الرفض'}>
               ❌ مرفوضة
             </span>
           );
@@ -446,8 +436,9 @@ export default function VisitTable() {
         return (
           <span style={{
             display: 'inline-block', padding: '3px 10px', borderRadius: '14px',
-            fontSize: '11.5px', fontWeight: 700,
+            fontSize: '11px', fontWeight: 700,
             background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0',
+            whiteSpace: 'nowrap',
           }}>
             ✅ معتمدة
           </span>

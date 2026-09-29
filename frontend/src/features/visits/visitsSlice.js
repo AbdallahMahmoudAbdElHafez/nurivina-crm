@@ -44,9 +44,14 @@ export const addVisit = createAsyncThunk('visits/add', async (data, thunkAPI) =>
   };
 
   const tempId = `temp_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+  const initialStatus = (data.is_new_doctor || data.is_new_clinic) ? 'pending_approval' : 'approved';
+  const initialApprovalType = data.is_new_doctor ? 'new_doctor' : data.is_new_clinic ? 'new_clinic' : null;
+
   const localVisit = {
     visit_id: tempId,
     ...data,
+    status: initialStatus,
+    approval_type: initialApprovalType,
     user: currentUser,
     doctor,
     clinic,
@@ -72,9 +77,17 @@ export const addVisit = createAsyncThunk('visits/add', async (data, thunkAPI) =>
   try {
     const res = await api.post('/visits', data);
     const created = res.data.visit || res.data;
+    const fullCreated = {
+      status: initialStatus,
+      approval_type: initialApprovalType,
+      ...created,
+      user: created.user || currentUser,
+      doctor: created.doctor || doctor,
+      clinic: created.clinic || clinic,
+    };
     // إضافة الكائن الجديد للكاش
-    await addOrPrependCachedItem('visits', { ...created, user: currentUser, doctor, clinic });
-    return created;
+    await addOrPrependCachedItem('visits', fullCreated);
+    return fullCreated;
   } catch (err) {
     console.warn('فشل إرسال الزيارة للسيرفر، جاري حفظها محلياً في طابور المزامنة:', err.message);
     await addOrPrependCachedItem('visits', localVisit);
