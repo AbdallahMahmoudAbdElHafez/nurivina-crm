@@ -8,6 +8,7 @@ import {
   deleteClinic,
 } from '../features/clinics/clinicsSlice';
 import { fetchCities } from '../features/cities/citiesSlice';
+import AddClinicModal from './AddClinicModal';
 
 export default function ClinicsTable() {
   const dispatch = useDispatch();
@@ -15,6 +16,7 @@ export default function ClinicsTable() {
   const { list: cities } = useSelector((state) => state.cities);
   const { user } = useSelector((state) => state.auth);
 
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [newClinic, setNewClinic] = useState({
     clinic_name: '',
     address: '',
@@ -75,9 +77,38 @@ export default function ClinicsTable() {
 
   return (
     <div style={{ width: '100%' }}>
-      <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '16px', color: '#1e293b' }}>
-        🏥 إدارة العيادات
-      </h2>
+      <AddClinicModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onClinicAdded={() => dispatch(fetchClinics())}
+      />
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <h2 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0, color: '#1e293b' }}>
+          🏥 إدارة العيادات
+        </h2>
+        {user && (
+          <button
+            type="button"
+            onClick={() => setIsModalOpen(true)}
+            style={{
+              backgroundColor: '#16a34a',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '7px 14px',
+              fontWeight: 700,
+              fontSize: '13px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            ➕ إضافة عيادة (دايلوج كامل)
+          </button>
+        )}
+      </div>
 
       {status === 'loading' && <p style={{ color: '#64748b' }}>جاري التحميل...</p>}
       {error && <p style={{ color: '#dc2626' }}>{error}</p>}
@@ -94,7 +125,7 @@ export default function ClinicsTable() {
           }}
         >
           <div style={{ fontWeight: 700, fontSize: '13px', marginBottom: '8px', color: '#334155' }}>
-            إضافة عيادة جديدة
+            إضافة سريعة
           </div>
           <div className="responsive-form-row">
             <input

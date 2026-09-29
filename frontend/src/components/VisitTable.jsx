@@ -5,7 +5,9 @@ import { fetchVisits, addVisit, updateVisitLocally } from '../features/visits/vi
 import api from '../api/apiClient';
 import { fetchDoctors, addDoctor } from '../features/doctors/doctorsSlice';
 import { fetchClinics, addClinic } from '../features/clinics/clinicsSlice';
+import { fetchCities } from '../features/cities/citiesSlice';
 import { savePendingLocation } from '../hooks/useOfflineSync';
+import AddClinicModal from './AddClinicModal';
 
 // ---- مكوّن زر مشاركة الموقع لكل صف ----
 function ShareLocationBtn({ visitId, onSuccess }) {
@@ -143,6 +145,7 @@ export default function VisitTable() {
   const { list, status } = useSelector((s) => s.visits);
   const doctors = useSelector((s) => s.doctors.list);
   const clinics = useSelector((s) => s.clinics.list);
+  const { list: cities } = useSelector((s) => s.cities);
 
   const [doctorId, setDoctorId] = useState('');
   const [clinicId, setClinicId] = useState('');
@@ -152,28 +155,30 @@ export default function VisitTable() {
   // حالات إضافة دكتور أو عيادة جديدة داخل نموذج الزيارة
   const [isAddingNewDoctor, setIsAddingNewDoctor] = useState(false);
   const [newDoctorName, setNewDoctorName] = useState('');
-  const [isAddingNewClinic, setIsAddingNewClinic] = useState(false);
-  const [newClinicName, setNewClinicName] = useState('');
+  const [isClinicModalOpen, setIsClinicModalOpen] = useState(false);
+  const [sessionAddedClinics, setSessionAddedClinics] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     dispatch(fetchVisits());
     dispatch(fetchDoctors());
     dispatch(fetchClinics());
+    dispatch(fetchCities());
 
     const handleDataSynced = () => {
       dispatch(fetchVisits());
       dispatch(fetchDoctors());
       dispatch(fetchClinics());
+      dispatch(fetchCities());
     };
     window.addEventListener('crm_data_synced', handleDataSynced);
     return () => window.removeEventListener('crm_data_synced', handleDataSynced);
   }, [dispatch]);
 
-  // حساب العيادات المرتبطة بالطبيب المختار من جدول الزيارات السابقة
+  // حساب العيادات المرتبطة بالطبيب المختار من جدول الزيارات السابقة والعيادات المضافة حديثاً
   const { associatedClinics, otherClinics } = useMemo(() => {
     if (!doctorId || isAddingNewDoctor || doctorId === '__NEW__') {
-      return { associatedClinics: [], otherClinics: clinics };
+      return { associatedClinics: sessionAddedClinics, otherClinics: clinics };
     }
 
     // استخراج معرّفات العيادات التي زارها المندوب مع هذا الطبيب سابقاً
@@ -185,10 +190,25 @@ export default function VisitTable() {
       doctorVisits.map((v) => String(v.clinic_id || v.clinic?.id)).filter(Boolean)
     );
 
+    // إضافة العيادات التي تمت إضافتها في هذه الجلسة
+    sessionAddedClinics.forEach((sc) => {
+      if (String(sc.forDoctorId) === String(doctorId) || !sc.forDoctorId) {
+        associatedIds.add(String(sc.id));
+      }
+    });
+
     const associated = [];
     const others = [];
 
-    clinics.forEach((c) => {
+    // دمج العيادات من قائمة clinics بالإضافة إلى sessionAddedClinics
+    const allKnownClinics = [...clinics];
+    sessionAddedClinics.forEach((sc) => {
+      if (!allKnownClinics.some((c) => String(c.id) === String(sc.id))) {
+        allKnownClinics.push(sc);
+      }
+    });
+
+    allKnownClinics.forEach((c) => {
       if (associatedIds.has(String(c.id))) {
         associated.push(c);
       } else {
@@ -197,7 +217,7 @@ export default function VisitTable() {
     });
 
     return { associatedClinics: associated, otherClinics: others };
-  }, [doctorId, isAddingNewDoctor, list, clinics]);
+  }, [doctorId, isAddingNewDoctor, list, clinics, sessionAddedClinics]);
 
   // عند تغيير الطبيب
   const handleDoctorChange = (val) => {
@@ -208,20 +228,67 @@ export default function VisitTable() {
     } else {
       setIsAddingNewDoctor(false);
       setDoctorId(val);
-      setClinicId(''); // إعادة تعيين العيادة ليختار المندوب من العيادات المرتبطة أو يضيف جديدة
+
+      if (val) {
+        // فحص العيادات المسجلة لهذا الطبيب سابقاً من واقع جدول الزيارات
+        const doctorVisits = (list || []).filter(
+          (v) => String(v.doctor_id || v.doctor?.id) === String(val)
+        );
+        const associatedIds = new Set(
+          doctorVisits.map((v) => String(v.clinic_id || v.clinic?.id)).filter(Boolean)
+        );
+        sessionAddedClinics.forEach((sc) => {
+          if (String(sc.forDoctorId) === String(val)) {
+            associatedIds.add(String(sc.id));
+          }
+        });
+
+        const matched = clinics.filter((c) => associatedIds.has(String(c.id)));
+
+        if (matched.length === 0) {
+          // طبيب جديد (ليس لديه عيادات سابقة): إلزامي إضافة عيادة جديدة له
+          setClinicId('');
+        } else if (matched.length === 1) {
+          // لديه عيادة واحدة مسجلة: اختيار تلقائي
+          setClinicId(String(matched[0].id));
+        } else {
+          // لديه أكثر من عيادة: إظهار عياداته فقط في القائمة
+          setClinicId('');
+        }
+      } else {
+        setClinicId('');
+      }
     }
   };
 
   // عند تغيير العيادة
   const handleClinicChange = (val) => {
     if (val === '__NEW__') {
-      setIsAddingNewClinic(true);
-      setClinicId('');
+      setIsClinicModalOpen(true);
     } else {
-      setIsAddingNewClinic(false);
       setClinicId(val);
     }
   };
+
+  // عند إضافة عيادة جديدة بنجاح عبر الدايلوج
+  const handleClinicAdded = (newClinic) => {
+    const enriched = {
+      ...newClinic,
+      forDoctorId: doctorId || (isAddingNewDoctor ? '__PENDING_DOCTOR__' : null),
+    };
+    setSessionAddedClinics((prev) => [...prev, enriched]);
+    setClinicId(String(newClinic.id));
+  };
+
+  // الحصول على كائن العيادة المختارة حالياً
+  const selectedClinicObj = useMemo(() => {
+    if (!clinicId) return null;
+    return (
+      clinics.find((c) => String(c.id) === String(clinicId)) ||
+      sessionAddedClinics.find((c) => String(c.id) === String(clinicId)) ||
+      null
+    );
+  }, [clinicId, clinics, sessionAddedClinics]);
 
   // معالجة تسجيل الزيارة وحفظ الطبيب/العيادة إن وُجدا
   const handleAddVisit = async () => {
@@ -245,24 +312,6 @@ export default function VisitTable() {
       }
     }
 
-    // 2. إذا كان يتم إضافة عيادة جديدة
-    if (isAddingNewClinic) {
-      if (!newClinicName.trim()) {
-        alert('يرجى إدخال اسم العيادة الجديدة');
-        setIsSubmitting(false);
-        return;
-      }
-      setIsSubmitting(true);
-      try {
-        const resClinic = await dispatch(addClinic({ clinic_name: newClinicName.trim() })).unwrap();
-        finalClinicId = resClinic?.id;
-      } catch (err) {
-        alert('حدث خطأ أثناء حفظ العيادة الجديدة: ' + err);
-        setIsSubmitting(false);
-        return;
-      }
-    }
-
     if (!finalDoctorId) {
       alert('يرجى اختيار أو إضافة طبيب');
       setIsSubmitting(false);
@@ -270,7 +319,8 @@ export default function VisitTable() {
     }
 
     if (!finalClinicId) {
-      alert('يرجى اختيار أو إضافة عيادة');
+      alert('يرجى اختيار أو إضافة عيادة جديدة لهذا الطبيب عبر الدايلوج');
+      setIsClinicModalOpen(true);
       setIsSubmitting(false);
       return;
     }
@@ -298,8 +348,6 @@ export default function VisitTable() {
       setNotes('');
       setIsAddingNewDoctor(false);
       setNewDoctorName('');
-      setIsAddingNewClinic(false);
-      setNewClinicName('');
     } catch (err) {
       console.error('Error adding visit:', err);
     } finally {
@@ -371,6 +419,13 @@ export default function VisitTable() {
 
   return (
     <div style={{ width: '100%' }}>
+      {/* دايلوج إضافة العيادة بجميع بياناتها */}
+      <AddClinicModal
+        isOpen={isClinicModalOpen}
+        onClose={() => setIsClinicModalOpen(false)}
+        onClinicAdded={handleClinicAdded}
+      />
+
       <div
         style={{
           display: 'flex',
@@ -413,7 +468,11 @@ export default function VisitTable() {
             {!isAddingNewDoctor && (
               <button
                 type="button"
-                onClick={() => setIsAddingNewDoctor(true)}
+                onClick={() => {
+                  setIsAddingNewDoctor(true);
+                  setDoctorId('');
+                  setClinicId('');
+                }}
                 style={{
                   background: '#f1f5f9',
                   border: '1px solid #cbd5e1',
@@ -428,24 +487,22 @@ export default function VisitTable() {
                 🩺 + دكتور جديد
               </button>
             )}
-            {!isAddingNewClinic && (
-              <button
-                type="button"
-                onClick={() => setIsAddingNewClinic(true)}
-                style={{
-                  background: '#f1f5f9',
-                  border: '1px solid #cbd5e1',
-                  color: '#334155',
-                  padding: '4px 10px',
-                  borderRadius: '6px',
-                  fontSize: '12px',
-                  cursor: 'pointer',
-                  fontWeight: 600,
-                }}
-              >
-                🏥 + عيادة جديدة
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => setIsClinicModalOpen(true)}
+              style={{
+                background: '#f0fdf4',
+                border: '1px solid #bbf7d0',
+                color: '#166534',
+                padding: '4px 10px',
+                borderRadius: '6px',
+                fontSize: '12px',
+                cursor: 'pointer',
+                fontWeight: 600,
+              }}
+            >
+              🏥 + إضافة عيادة جديدة (دايلوج)
+            </button>
           </div>
         </div>
 
@@ -468,6 +525,7 @@ export default function VisitTable() {
                   onClick={() => {
                     setIsAddingNewDoctor(false);
                     setNewDoctorName('');
+                    setClinicId('');
                   }}
                   title="إلغاء واختيار من القائمة"
                   style={{
@@ -487,7 +545,7 @@ export default function VisitTable() {
                 value={doctorId}
                 onChange={(e) => handleDoctorChange(e.target.value)}
               >
-                <option value="">اختر الطبيب</option>
+                <option value="">اختر الطبيب...</option>
                 <option value="__NEW__" style={{ color: '#2563eb', fontWeight: 'bold' }}>
                   ➕ + إضافة طبيب جديد
                 </option>
@@ -500,67 +558,97 @@ export default function VisitTable() {
             )}
           </div>
 
-          {/* حقل اختيار أو إضافة العيادة مع إظهار العيادات المرتبطة بالطبيب أولاً */}
-          <div style={{ flex: '1 1 220px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <label style={{ fontSize: '12px', fontWeight: 600, color: '#475569' }}>العيادة:</label>
-            {isAddingNewClinic ? (
-              <div style={{ display: 'flex', gap: '4px' }}>
-                <input
-                  type="text"
-                  placeholder="اكتب اسم العيادة الجديدة..."
-                  value={newClinicName}
-                  onChange={(e) => setNewClinicName(e.target.value)}
-                  style={{ flex: 1, border: '2px solid #10b981' }}
-                  autoFocus
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsAddingNewClinic(false);
-                    setNewClinicName('');
-                  }}
-                  title="إلغاء واختيار من القائمة"
-                  style={{
-                    background: '#f1f5f9',
-                    border: '1px solid #cbd5e1',
-                    borderRadius: '6px',
-                    padding: '0 8px',
-                    cursor: 'pointer',
-                    fontSize: '11px',
-                  }}
-                >
-                  ✕
-                </button>
+          {/* حقل العيادة: يظهر فقط عيادات الطبيب المختار أو فتح دايلوج إضافة عيادة كاملة */}
+          <div style={{ flex: '1 1 240px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <label style={{ fontSize: '12px', fontWeight: 600, color: '#475569' }}>
+              العيادة {doctorId && associatedClinics.length > 0 ? `(المسجلة للطبيب: ${associatedClinics.length})` : ''}:
+            </label>
+
+            {/* حالة الطبيب الجديد أو الطبيب الذي ليس لديه عيادات سابقة مسجلة */}
+            {(isAddingNewDoctor || (doctorId && associatedClinics.length === 0)) ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {selectedClinicObj ? (
+                  <div
+                    style={{
+                      background: '#f0fdf4',
+                      border: '1px solid #86efac',
+                      borderRadius: '8px',
+                      padding: '6px 10px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '8px',
+                    }}
+                  >
+                    <div style={{ fontSize: '12.5px', color: '#166534', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      🏥 {selectedClinicObj.clinic_name}
+                      {selectedClinicObj.city?.name ? ` (${selectedClinicObj.city.name})` : ''}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsClinicModalOpen(true)}
+                      style={{
+                        background: '#dcfce7',
+                        border: '1px solid #86efac',
+                        color: '#15803d',
+                        borderRadius: '5px',
+                        padding: '2px 8px',
+                        fontSize: '11px',
+                        cursor: 'pointer',
+                        fontWeight: 700,
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      ✏️ تغيير / إضافة أخرى
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setIsClinicModalOpen(true)}
+                    style={{
+                      backgroundColor: '#10b981',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '7px',
+                      padding: '8px 12px',
+                      fontWeight: 700,
+                      fontSize: '13px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px',
+                      boxShadow: '0 1px 3px rgba(16, 185, 129, 0.2)',
+                    }}
+                  >
+                    🏥 + إضافة عيادة جديدة لهذا الطبيب (دايلوج كامل)
+                  </button>
+                )}
+                <span style={{ fontSize: '11px', color: '#059669', fontWeight: 600 }}>
+                  ✍️ هذا الطبيب جديد، يجب إضافة عيادة جديدة له بكامل تفاصيلها
+                </span>
               </div>
             ) : (
               <select
                 value={clinicId}
                 onChange={(e) => handleClinicChange(e.target.value)}
+                disabled={!doctorId}
               >
-                <option value="">اختر العيادة</option>
-                <option value="__NEW__" style={{ color: '#059669', fontWeight: 'bold' }}>
-                  ➕ + إضافة عيادة جديدة لهذا الطبيب
+                <option value="">
+                  {!doctorId ? '⚠️ اختر الطبيب أولاً' : 'اختر من عيادات هذا الطبيب...'}
                 </option>
 
-                {/* عيادات سابقة لهذا الطبيب من جدول الزيارات */}
-                {associatedClinics.length > 0 && (
-                  <optgroup label="⭐ عيادات مسجلة لهذا الطبيب سابقاً">
-                    {associatedClinics.map((cl) => (
-                      <option key={cl.id} value={cl.id}>
-                        ⭐ {cl.clinic_name}
-                      </option>
-                    ))}
-                  </optgroup>
-                )}
+                {/* تظهر فقط عيادات هذا الطبيب المسجلة له في الزيارات */}
+                {associatedClinics.map((cl) => (
+                  <option key={cl.id} value={cl.id}>
+                    🏥 {cl.clinic_name} {cl.city?.name ? `(${cl.city.name})` : ''}
+                  </option>
+                ))}
 
-                {/* باقي العيادات */}
-                <optgroup label="🏥 باقي العيادات المتاحة">
-                  {otherClinics.map((cl) => (
-                    <option key={cl.id} value={cl.id}>
-                      {cl.clinic_name}
-                    </option>
-                  ))}
-                </optgroup>
+                <option value="__NEW__" style={{ color: '#059669', fontWeight: 'bold' }}>
+                  ➕ + إضافة عيادة جديدة لهذا الطبيب (دايلوج كامل)...
+                </option>
               </select>
             )}
           </div>
@@ -613,8 +701,8 @@ export default function VisitTable() {
           </div>
         </div>
 
-        {/* عرض وسوم سريعة للعيادات المرتبطة بالطبيب لسهولة الاختيار بضغطة واحدة */}
-        {doctorId && !isAddingNewDoctor && associatedClinics.length > 0 && !isAddingNewClinic && (
+        {/* عرض وسوم سريعة لعيادات الطبيب فقط */}
+        {doctorId && !isAddingNewDoctor && associatedClinics.length > 0 && (
           <div
             style={{
               marginTop: '10px',
@@ -629,7 +717,7 @@ export default function VisitTable() {
             }}
           >
             <span style={{ fontSize: '12px', color: '#475569', fontWeight: 600 }}>
-              ⭐ العيادات المسجلة لهذا الطبيب:
+              ⭐ عيادات الطبيب المسجلة:
             </span>
             {associatedClinics.map((ac) => {
               const isSelected = String(clinicId) === String(ac.id);
@@ -654,9 +742,27 @@ export default function VisitTable() {
                 </button>
               );
             })}
+            <button
+              type="button"
+              onClick={() => setIsClinicModalOpen(true)}
+              style={{
+                backgroundColor: '#f0fdf4',
+                color: '#15803d',
+                border: '1px dashed #86efac',
+                borderRadius: '16px',
+                padding: '3px 10px',
+                fontSize: '11.5px',
+                cursor: 'pointer',
+                fontWeight: 700,
+              }}
+            >
+              ➕ عيادة جديدة لهذا الطبيب
+            </button>
           </div>
         )}
       </div>
+
+
 
       {/* الجدول مغلّف بحاوية تمرير أفقي سلس للموبايل */}
       <div className="table-responsive-container">
