@@ -8,6 +8,7 @@ import { fetchClinics, addClinic } from '../features/clinics/clinicsSlice';
 import { fetchCities } from '../features/cities/citiesSlice';
 import { savePendingLocation } from '../hooks/useOfflineSync';
 import AddClinicModal from './AddClinicModal';
+import AddDoctorClinicPlanModal from './AddDoctorClinicPlanModal';
 
 // ---- مكوّن زر مشاركة الموقع لكل صف ----
 function ShareLocationBtn({ visitId, onSuccess }) {
@@ -156,6 +157,8 @@ export default function VisitTable() {
   const [isAddingNewDoctor, setIsAddingNewDoctor] = useState(false);
   const [newDoctorName, setNewDoctorName] = useState('');
   const [isClinicModalOpen, setIsClinicModalOpen] = useState(false);
+  const [isDoctorClinicPlanModalOpen, setIsDoctorClinicPlanModalOpen] = useState(false);
+  const [modalDoctorId, setModalDoctorId] = useState('');
   const [sessionAddedClinics, setSessionAddedClinics] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -222,9 +225,8 @@ export default function VisitTable() {
   // عند تغيير الطبيب
   const handleDoctorChange = (val) => {
     if (val === '__NEW__') {
-      setIsAddingNewDoctor(true);
-      setDoctorId('');
-      setClinicId('');
+      setModalDoctorId('');
+      setIsDoctorClinicPlanModalOpen(true);
     } else {
       setIsAddingNewDoctor(false);
       setDoctorId(val);
@@ -246,13 +248,10 @@ export default function VisitTable() {
         const matched = clinics.filter((c) => associatedIds.has(String(c.id)));
 
         if (matched.length === 0) {
-          // طبيب جديد (ليس لديه عيادات سابقة): إلزامي إضافة عيادة جديدة له
           setClinicId('');
         } else if (matched.length === 1) {
-          // لديه عيادة واحدة مسجلة: اختيار تلقائي
           setClinicId(String(matched[0].id));
         } else {
-          // لديه أكثر من عيادة: إظهار عياداته فقط في القائمة
           setClinicId('');
         }
       } else {
@@ -264,13 +263,37 @@ export default function VisitTable() {
   // عند تغيير العيادة
   const handleClinicChange = (val) => {
     if (val === '__NEW__') {
-      setIsClinicModalOpen(true);
+      setModalDoctorId(doctorId || '');
+      setIsDoctorClinicPlanModalOpen(true);
     } else {
       setClinicId(val);
     }
   };
 
-  // عند إضافة عيادة جديدة بنجاح عبر الدايلوج
+  // عند الحفظ من الدايلوج الشامل (طبيب + عيادة + خطة وتكرار)
+  const handleDoctorClinicPlanSaved = ({ doctor, clinic, isNewDoctor }) => {
+    const docId = String(doctor?.id || '');
+    const clId = String(clinic?.id || '');
+
+    if (clId) {
+      const enriched = {
+        ...clinic,
+        forDoctorId: docId,
+      };
+      setSessionAddedClinics((prev) => [...prev, enriched]);
+    }
+
+    if (docId) {
+      setDoctorId(docId);
+      setIsAddingNewDoctor(false);
+      setNewDoctorName('');
+    }
+    if (clId) {
+      setClinicId(clId);
+    }
+  };
+
+  // عند إضافة عيادة جديدة بنجاح عبر الدايلوج القديم إن وجد
   const handleClinicAdded = (newClinic) => {
     const enriched = {
       ...newClinic,
@@ -494,7 +517,15 @@ export default function VisitTable() {
 
   return (
     <div style={{ width: '100%' }}>
-      {/* دايلوج إضافة العيادة بجميع بياناتها */}
+      {/* الدايلوج الشامل لإضافة دكتور جديد أو عيادة جديدة وتفاصيل الخطة والتكرار */}
+      <AddDoctorClinicPlanModal
+        isOpen={isDoctorClinicPlanModalOpen}
+        onClose={() => setIsDoctorClinicPlanModalOpen(false)}
+        onSaved={handleDoctorClinicPlanSaved}
+        initialDoctorId={modalDoctorId}
+      />
+
+      {/* دايلوج إضافة العيادة القديم كـ Fallback */}
       <AddClinicModal
         isOpen={isClinicModalOpen}
         onClose={() => setIsClinicModalOpen(false)}
@@ -539,44 +570,50 @@ export default function VisitTable() {
             ➕ تسجيل زيارة جديدة
           </div>
 
-          <div style={{ display: 'flex', gap: '8px' }}>
-            {!isAddingNewDoctor && (
-              <button
-                type="button"
-                onClick={() => {
-                  setIsAddingNewDoctor(true);
-                  setDoctorId('');
-                  setClinicId('');
-                }}
-                style={{
-                  background: '#f1f5f9',
-                  border: '1px solid #cbd5e1',
-                  color: '#334155',
-                  padding: '4px 10px',
-                  borderRadius: '6px',
-                  fontSize: '12px',
-                  cursor: 'pointer',
-                  fontWeight: 600,
-                }}
-              >
-                🩺 + دكتور جديد
-              </button>
-            )}
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             <button
               type="button"
-              onClick={() => setIsClinicModalOpen(true)}
+              onClick={() => {
+                setModalDoctorId('');
+                setIsDoctorClinicPlanModalOpen(true);
+              }}
+              style={{
+                background: '#eff6ff',
+                border: '1px solid #bfdbfe',
+                color: '#1d4ed8',
+                padding: '5px 12px',
+                borderRadius: '7px',
+                fontSize: '12.5px',
+                cursor: 'pointer',
+                fontWeight: 700,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+              }}
+            >
+              🩺 + دكتور وعيادة وخطة جديدة
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setModalDoctorId(doctorId || '');
+                setIsDoctorClinicPlanModalOpen(true);
+              }}
               style={{
                 background: '#f0fdf4',
                 border: '1px solid #bbf7d0',
                 color: '#166534',
-                padding: '4px 10px',
-                borderRadius: '6px',
-                fontSize: '12px',
+                padding: '5px 12px',
+                borderRadius: '7px',
+                fontSize: '12.5px',
                 cursor: 'pointer',
-                fontWeight: 600,
+                fontWeight: 700,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
               }}
             >
-              🏥 + إضافة عيادة جديدة (دايلوج)
+              🏥 + إضافة عيادة / خطة لطبيب
             </button>
           </div>
         </div>
@@ -661,7 +698,10 @@ export default function VisitTable() {
                     </div>
                     <button
                       type="button"
-                      onClick={() => setIsClinicModalOpen(true)}
+                      onClick={() => {
+                        setModalDoctorId(doctorId || '');
+                        setIsDoctorClinicPlanModalOpen(true);
+                      }}
                       style={{
                         background: '#dcfce7',
                         border: '1px solid #86efac',
@@ -683,7 +723,10 @@ export default function VisitTable() {
                 ) : (
                   <button
                     type="button"
-                    onClick={() => setIsClinicModalOpen(true)}
+                    onClick={() => {
+                      setModalDoctorId(doctorId || '');
+                      setIsDoctorClinicPlanModalOpen(true);
+                    }}
                     style={{
                       backgroundColor: '#059669',
                       color: '#ffffff',

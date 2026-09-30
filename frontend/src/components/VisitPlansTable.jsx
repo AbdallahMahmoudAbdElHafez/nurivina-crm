@@ -23,6 +23,7 @@ import {
 } from '../features/visitPlans/visitPlansSlice';
 import { fetchDoctors } from '../features/doctors/doctorsSlice';
 import { fetchClinics } from '../features/clinics/clinicsSlice';
+import AddDoctorClinicPlanModal from './AddDoctorClinicPlanModal';
 
 const daysOfWeek = [
     'Saturday',
@@ -41,6 +42,7 @@ export default function VisitPlansTable() {
     const { list: clinics } = useSelector((s) => s.clinics);
 
     const [openDialog, setOpenDialog] = useState(false);
+    const [openFullModal, setOpenFullModal] = useState(false);
     const [newPlan, setNewPlan] = useState({
         doctor_id: '',
         clinic_id: '',
@@ -143,20 +145,41 @@ export default function VisitPlansTable() {
 
     return (
         <Box p={{ xs: 1, sm: 2 }}>
+            <AddDoctorClinicPlanModal
+                isOpen={openFullModal}
+                onClose={() => setOpenFullModal(false)}
+                onSaved={() => {
+                    dispatch(fetchVisitPlans());
+                    dispatch(fetchDoctors());
+                    dispatch(fetchClinics());
+                }}
+            />
+
             <Typography variant="h6" mb={2} fontWeight="bold">
                 📋 إدارة خطط الأطباء (CRM)
             </Typography>
 
-            <Button
-                startIcon={<Add />}
-                variant="contained"
-                color="primary"
-                size="small"
-                onClick={() => setOpenDialog(true)}
-                sx={{ mb: 1.5 }}
-            >
-                إضافة خطة جديدة
-            </Button>
+            <Stack direction="row" spacing={1.5} mb={1.5} flexWrap="wrap" gap={1}>
+                <Button
+                    startIcon={<Add />}
+                    variant="contained"
+                    color="primary"
+                    size="small"
+                    onClick={() => setOpenFullModal(true)}
+                    sx={{ fontWeight: 700 }}
+                >
+                    🩺 + إضافة دكتور وعيادة وخطة (شامل)
+                </Button>
+                <Button
+                    startIcon={<Add />}
+                    variant="outlined"
+                    color="primary"
+                    size="small"
+                    onClick={() => setOpenDialog(true)}
+                >
+                    إضافة مواعيد خطة
+                </Button>
+            </Stack>
 
             <div className="table-responsive-container">
                 <MaterialReactTable

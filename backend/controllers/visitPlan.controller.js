@@ -13,17 +13,27 @@ const create = async (req, res, next) => {
     const { doctor_id, clinic_id, marketClass, visit_frequency, schedules } = req.body;
     const user_id = req.user?.user_id;
 
-    if (!doctor_id || !schedules || schedules.length === 0) {
-      return res.status(400).json({ message: 'الطبيب وجدول المواعيد مطلوبان' });
+    if (!doctor_id) {
+      return res.status(400).json({ message: 'الطبيب مطلوب' });
     }
 
-    const plan = await VisitPlan.create({
-      user_id,
-      doctor_id,
-      clinic_id,
-      marketClass,
-      visit_frequency,
-    });
+    // فحص ما إذا كان هناك خطة مسبقة لنفس الطبيب والمستخدم
+    let plan = await VisitPlan.findOne({ where: { doctor_id } });
+    if (plan) {
+      await plan.update({
+        clinic_id: clinic_id ?? plan.clinic_id,
+        marketClass: marketClass ?? plan.marketClass,
+        visit_frequency: visit_frequency ?? plan.visit_frequency,
+      });
+    } else {
+      plan = await VisitPlan.create({
+        user_id,
+        doctor_id,
+        clinic_id,
+        marketClass,
+        visit_frequency,
+      });
+    }
 
     if (schedules && schedules.length > 0) {
       const formattedSchedules = schedules.map((s) => ({
