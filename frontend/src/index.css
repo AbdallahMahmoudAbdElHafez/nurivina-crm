@@ -119,6 +119,11 @@ button:active {
   .responsive-form-row > .form-full-width {
     grid-column: 1 / -1;
   }
+
+  .form-notes-action-row {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
 }
 
 /* شريط التنقل السفلي للموبايل (Bottom Navigation Bar) */

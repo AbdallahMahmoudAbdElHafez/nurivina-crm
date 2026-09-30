@@ -674,18 +674,27 @@ export default function VisitTable() {
           </div>
         </div>
 
-        <div className="responsive-form-row" style={{ alignItems: 'flex-start' }}>
-          {/* حقل اختيار أو إضافة الطبيب */}
-          <div style={{ flex: '1 1 200px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <label style={{ fontSize: '12px', fontWeight: 600, color: '#475569' }}>الطبيب:</label>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+            gap: '14px',
+            alignItems: 'start',
+          }}
+        >
+          {/* 1. حقل اختيار أو إضافة الطبيب */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+            <label style={{ fontSize: '12.5px', fontWeight: 700, color: '#334155' }}>
+              🩺 الطبيب <span style={{ color: '#dc2626' }}>*</span>:
+            </label>
             {isAddingNewDoctor ? (
-              <div style={{ display: 'flex', gap: '4px' }}>
+              <div style={{ display: 'flex', gap: '6px', height: '40px' }}>
                 <input
                   type="text"
-                  placeholder="اكتب اسم الطبيب الجديد..."
+                  placeholder="اسم الطبيب الجديد..."
                   value={newDoctorName}
                   onChange={(e) => setNewDoctorName(e.target.value)}
-                  style={{ flex: 1, border: '2px solid #3b82f6' }}
+                  style={{ flex: 1, height: '100%', border: '2px solid #3b82f6' }}
                   autoFocus
                 />
                 <button
@@ -699,10 +708,11 @@ export default function VisitTable() {
                   style={{
                     background: '#f1f5f9',
                     border: '1px solid #cbd5e1',
-                    borderRadius: '6px',
-                    padding: '0 8px',
+                    borderRadius: '7px',
+                    padding: '0 12px',
                     cursor: 'pointer',
-                    fontSize: '11px',
+                    fontSize: '13px',
+                    height: '100%',
                   }}
                 >
                   ✕
@@ -712,10 +722,11 @@ export default function VisitTable() {
               <select
                 value={doctorId}
                 onChange={(e) => handleDoctorChange(e.target.value)}
+                style={{ width: '100%', height: '40px' }}
               >
-                <option value="">اختر الطبيب...</option>
+                <option value="">-- اختر الطبيب --</option>
                 <option value="__NEW__" style={{ color: '#2563eb', fontWeight: 'bold' }}>
-                  ➕ + إضافة طبيب جديد
+                  ➕ + إضافة طبيب وعيادة وخطة جديدة...
                 </option>
                 {doctors.map((doc) => (
                   <option key={doc.id} value={doc.id}>
@@ -726,31 +737,29 @@ export default function VisitTable() {
             )}
           </div>
 
-          {/* حقل العيادة: يظهر فقط عيادات الطبيب المختار أو فتح دايلوج إضافة عيادة كاملة */}
-          <div style={{ flex: '1 1 240px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <label style={{ fontSize: '12px', fontWeight: 600, color: '#475569' }}>
-              العيادة {doctorId && associatedClinics.length > 0 ? `(المسجلة للطبيب: ${associatedClinics.length})` : ''}:
+          {/* 2. حقل العيادة */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+            <label style={{ fontSize: '12.5px', fontWeight: 700, color: '#334155' }}>
+              🏥 العيادة {doctorId && associatedClinics.length > 0 ? `(${associatedClinics.length})` : ''} <span style={{ color: '#dc2626' }}>*</span>:
             </label>
 
-            {/* حالة الطبيب الجديد أو الطبيب الذي ليس لديه عيادات سابقة مسجلة */}
             {(isAddingNewDoctor || (doctorId && associatedClinics.length === 0)) ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 {selectedClinicObj ? (
                   <div
                     style={{
                       background: '#f0fdf4',
                       border: '1px solid #86efac',
                       borderRadius: '8px',
-                      padding: '8px 12px',
+                      padding: '6px 10px',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
-                      gap: '8px',
+                      height: '40px',
                     }}
                   >
                     <div style={{ fontSize: '13px', color: '#166534', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       🏥 {selectedClinicObj.clinic_name}
-                      {selectedClinicObj.city?.name ? ` (${selectedClinicObj.city.name})` : ''}
                     </div>
                     <button
                       type="button"
@@ -763,17 +772,14 @@ export default function VisitTable() {
                         border: '1px solid #86efac',
                         color: '#15803d',
                         borderRadius: '6px',
-                        padding: '4px 10px',
-                        fontSize: '12px',
-                        lineHeight: 1.3,
-                        minHeight: '28px',
-                        height: 'auto',
+                        padding: '2px 8px',
+                        fontSize: '11.5px',
                         cursor: 'pointer',
                         fontWeight: 700,
-                        whiteSpace: 'nowrap',
+                        minHeight: '28px',
                       }}
                     >
-                      ✏️ تغيير / إضافة
+                      ✏️ تغيير
                     </button>
                   </div>
                 ) : (
@@ -788,95 +794,64 @@ export default function VisitTable() {
                       color: '#ffffff',
                       border: 'none',
                       borderRadius: '8px',
-                      padding: '8px 14px',
+                      padding: '6px 12px',
                       fontWeight: 700,
-                      fontSize: '13px',
-                      lineHeight: 1.4,
-                      minHeight: '40px',
-                      height: 'auto',
+                      fontSize: '12.5px',
+                      height: '40px',
                       cursor: 'pointer',
                       display: 'inline-flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       gap: '6px',
                       width: '100%',
-                      boxShadow: '0 2px 5px rgba(5, 150, 105, 0.25)',
-                      textAlign: 'center',
                     }}
                   >
-                    🏥 + إضافة عيادة جديدة لهذا الطبيب
+                    🏥 + إضافة عيادة لهذا الطبيب
                   </button>
                 )}
-                <span style={{ fontSize: '11.5px', color: '#059669', fontWeight: 600 }}>
-                  ✍️ هذا الطبيب جديد، يجب إضافة عيادة جديدة له بكامل تفاصيلها
-                </span>
               </div>
             ) : (
               <select
                 value={clinicId}
                 onChange={(e) => handleClinicChange(e.target.value)}
                 disabled={!doctorId}
+                style={{ width: '100%', height: '40px' }}
               >
                 <option value="">
-                  {!doctorId ? '⚠️ اختر الطبيب أولاً' : 'اختر من عيادات هذا الطبيب...'}
+                  {!doctorId ? '⚠️ اختر الطبيب أولاً' : '-- اختر العيادة --'}
                 </option>
-
-                {/* تظهر فقط عيادات هذا الطبيب المسجلة له في الزيارات */}
                 {associatedClinics.map((cl) => (
                   <option key={cl.id} value={cl.id}>
                     🏥 {cl.clinic_name} {cl.city?.name ? `(${cl.city.name})` : ''}
                   </option>
                 ))}
-
                 <option value="__NEW__" style={{ color: '#059669', fontWeight: 'bold' }}>
-                  ➕ + إضافة عيادة جديدة لهذا الطبيب (دايلوج كامل)...
+                  ➕ + إضافة عيادة جديدة لهذا الطبيب...
                 </option>
               </select>
             )}
           </div>
 
-          {/* رقم الأسبوع */}
-          <div style={{ flex: '0 1 100px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <label style={{ fontSize: '12px', fontWeight: 600, color: '#475569' }}>الأسبوع:</label>
+          {/* 3. رقم الأسبوع */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+            <label style={{ fontSize: '12.5px', fontWeight: 700, color: '#334155' }}>
+              📅 رقم الأسبوع <span style={{ color: '#dc2626' }}>*</span>:
+            </label>
             <input
               type="number"
-              placeholder="1"
+              min="1"
+              max="5"
+              placeholder="مثال: 1 أو 2"
               value={weekNumber}
               onChange={(e) => setWeekNumber(e.target.value)}
+              style={{ width: '100%', height: '40px' }}
             />
           </div>
 
-          {/* الملاحظات */}
-          <div style={{ flex: '2 1 260px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <label style={{ fontSize: '12px', fontWeight: 600, color: '#475569' }}>ملاحظات:</label>
-            <textarea
-              placeholder="ملاحظات الزيارة..."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={4}
-              style={{
-                resize: 'vertical',
-                minHeight: '100px',
-                maxHeight: '300px',
-                width: '100%',
-                padding: '10px 12px',
-                borderRadius: '8px',
-                border: '1px solid #cbd5e1',
-                fontSize: '14px',
-                fontFamily: 'inherit',
-                lineHeight: '1.6',
-                outline: 'none',
-                transition: 'border-color 0.2s',
-              }}
-              onFocus={(e) => (e.target.style.borderColor = '#3b82f6')}
-              onBlur={(e) => (e.target.style.borderColor = '#cbd5e1')}
-            />
-          </div>
-
-          {/* مشاركة الموقع الإلزامية (Share Location) */}
-          <div style={{ flex: '1 1 220px', display: 'flex', flexDirection: 'column', gap: '4px', alignSelf: 'flex-start' }}>
-            <label style={{ fontSize: '12px', fontWeight: 700, color: '#1e293b' }}>
-              📍 مشاركة الموقع الحالي <span style={{ color: '#dc2626' }}>* (إلزامي)</span>:
+          {/* 4. مشاركة الموقع GPS الإلزامية */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+            <label style={{ fontSize: '12.5px', fontWeight: 700, color: '#1e293b' }}>
+              📍 مشاركة الموقع <span style={{ color: '#dc2626' }}>* (إلزامي)</span>:
             </label>
 
             {sharedLocation ? (
@@ -885,36 +860,33 @@ export default function VisitTable() {
                   background: '#f0fdf4',
                   border: '1px solid #86efac',
                   borderRadius: '8px',
-                  padding: '8px 10px',
+                  padding: '6px 10px',
                   display: 'flex',
-                  flexDirection: 'column',
-                  gap: '4px',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  height: '40px',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: '12px', color: '#166534', fontWeight: 700 }}>
-                    ✅ تم التقاط الموقع بنجاح
-                  </span>
-                  <button
-                    type="button"
-                    onClick={handleCaptureLocation}
-                    disabled={isLocating}
-                    style={{
-                      background: 'transparent',
-                      border: 'none',
-                      color: '#2563eb',
-                      fontSize: '11px',
-                      textDecoration: 'underline',
-                      cursor: 'pointer',
-                      padding: 0,
-                    }}
-                  >
-                    تحديث الموقع
-                  </button>
+                <div style={{ fontSize: '12px', color: '#166534', fontWeight: 700 }}>
+                  ✅ تم التقاط الموقع ({sharedLocation.lat.toFixed(4)}, {sharedLocation.lng.toFixed(4)})
                 </div>
-                <div style={{ fontSize: '11px', color: '#475569' }}>
-                  الإحداثيات: {sharedLocation.lat.toFixed(5)}, {sharedLocation.lng.toFixed(5)}
-                </div>
+                <button
+                  type="button"
+                  onClick={handleCaptureLocation}
+                  disabled={isLocating}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#2563eb',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    textDecoration: 'underline',
+                    cursor: 'pointer',
+                    padding: 0,
+                  }}
+                >
+                  تحديث
+                </button>
               </div>
             ) : (
               <button
@@ -926,60 +898,96 @@ export default function VisitTable() {
                   color: '#ffffff',
                   border: 'none',
                   borderRadius: '8px',
-                  padding: '10px 14px',
+                  padding: '8px 12px',
                   fontWeight: 700,
-                  fontSize: '13px',
+                  fontSize: '12.5px',
+                  height: '40px',
                   cursor: isLocating ? 'wait' : 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '6px',
-                  boxShadow: '0 2px 5px rgba(37, 99, 235, 0.25)',
-                  minHeight: '42px',
+                  boxShadow: '0 2px 4px rgba(37, 99, 235, 0.2)',
+                  width: '100%',
                 }}
               >
                 {isLocating ? '⏳ جارٍ تحديد موقعك...' : '📍 مشاركة موقعي الآن (GPS)'}
               </button>
             )}
-
             {locationError && (
               <span style={{ fontSize: '11px', color: '#dc2626', fontWeight: 600 }}>
                 ⚠️ {locationError}
               </span>
             )}
-            {!sharedLocation && !locationError && (
-              <span style={{ fontSize: '11px', color: '#64748b' }}>
-                اضغط لتسجيل إحداثيات موقعك قبل حفظ الزيارة
-              </span>
-            )}
+          </div>
+        </div>
+
+        {/* صف الملاحظات وزر الحفظ متناسقان تماماً */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'minmax(0, 1fr) auto',
+            gap: '14px',
+            alignItems: 'end',
+            marginTop: '14px',
+          }}
+          className="form-notes-action-row"
+        >
+          {/* الملاحظات */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+            <label style={{ fontSize: '12.5px', fontWeight: 700, color: '#334155' }}>
+              📝 ملاحظات الزيارة:
+            </label>
+            <textarea
+              placeholder="اكتب أي ملاحظات أو تفاصيل حول الزيارة هنا..."
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={3}
+              style={{
+                resize: 'vertical',
+                minHeight: '75px',
+                maxHeight: '200px',
+                width: '100%',
+                padding: '8px 12px',
+                borderRadius: '8px',
+                border: '1px solid #cbd5e1',
+                fontSize: '13.5px',
+                fontFamily: 'inherit',
+                lineHeight: '1.5',
+                outline: 'none',
+              }}
+              onFocus={(e) => (e.target.style.borderColor = '#3b82f6')}
+              onBlur={(e) => (e.target.style.borderColor = '#cbd5e1')}
+            />
           </div>
 
-          {/* زر الحفظ */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignSelf: 'flex-end' }}>
-            <label style={{ fontSize: '12px', opacity: 0 }}>حفظ</label>
+          {/* زر حفظ الزيارة */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', minWidth: '160px' }}>
+            <label style={{ fontSize: '12.5px', opacity: 0 }}>إجراء</label>
             <button
               onClick={handleAddVisit}
               disabled={isSubmitting || isLocating}
-              className="form-btn-full"
               style={{
                 backgroundColor: !sharedLocation ? '#64748b' : '#16a34a',
                 color: '#ffffff',
                 border: 'none',
-                borderRadius: '7px',
+                borderRadius: '8px',
                 fontWeight: 700,
-                fontSize: '13.5px',
+                fontSize: '14px',
                 cursor: (isSubmitting || isLocating) ? 'not-allowed' : 'pointer',
-                whiteSpace: 'nowrap',
-                padding: '10px 18px',
-                minHeight: '42px',
-                height: 'auto',
-                lineHeight: 1.4,
-                transition: 'background-color 0.2s',
-                opacity: isSubmitting ? 0.7 : 1,
+                padding: '0 22px',
+                height: '50px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+                boxShadow: !sharedLocation ? 'none' : '0 3px 8px rgba(22, 163, 74, 0.3)',
+                transition: 'all 0.2s ease',
+                width: '100%',
               }}
-              title={!sharedLocation ? 'يرجى مشاركة الموقع أولاً' : 'حفظ الزيارة'}
+              title={!sharedLocation ? 'يجب مشاركة الموقع أولاً' : 'حفظ الزيارة'}
             >
-              {isSubmitting ? '⏳ جاري الحفظ...' : '+ إضافة زيارة'}
+              {isSubmitting ? '⏳ جاري الحفظ...' : '➕ إضافة الزيارة'}
             </button>
           </div>
         </div>
