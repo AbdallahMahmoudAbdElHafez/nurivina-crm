@@ -5,6 +5,16 @@ import { addClinic, fetchClinics } from '../features/clinics/clinicsSlice';
 import { fetchCities } from '../features/cities/citiesSlice';
 import { addVisitPlan, fetchVisitPlans } from '../features/visitPlans/visitPlansSlice';
 
+const daysOfWeek = [
+  { key: 'Saturday', label: 'السبت' },
+  { key: 'Sunday', label: 'الأحد' },
+  { key: 'Monday', label: 'الإثنين' },
+  { key: 'Tuesday', label: 'الثلاثاء' },
+  { key: 'Wednesday', label: 'الأربعاء' },
+  { key: 'Thursday', label: 'الخميس' },
+  { key: 'Friday', label: 'الجمعة' },
+];
+
 export default function AddDoctorClinicPlanModal({
   isOpen,
   onClose,
@@ -32,6 +42,13 @@ export default function AddDoctorClinicPlanModal({
   const [marketClass, setMarketClass] = useState('');
   const [visitFrequency, setVisitFrequency] = useState('');
 
+  // مواعيد وجدول الزيارات المتعددة (visit_plan_schedules)
+  const [schedules, setSchedules] = useState([]);
+  const [currentDay, setCurrentDay] = useState('');
+  const [currentTimeFrom, setCurrentTimeFrom] = useState('');
+  const [currentTimeTo, setCurrentTimeTo] = useState('');
+  const [scheduleError, setScheduleError] = useState('');
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -57,6 +74,11 @@ export default function AddDoctorClinicPlanModal({
       setCityId('');
       setMarketClass('');
       setVisitFrequency('');
+      setSchedules([]);
+      setCurrentDay('');
+      setCurrentTimeFrom('');
+      setCurrentTimeTo('');
+      setScheduleError('');
       setErrorMsg('');
 
       if (!cities || cities.length === 0) dispatch(fetchCities());
@@ -66,6 +88,39 @@ export default function AddDoctorClinicPlanModal({
   }, [isOpen, initialDoctorId, initialDoctorName, dispatch]);
 
   if (!isOpen) return null;
+
+  // إضافة موعد جديد إلى القائمة المحلية
+  const handleAddSchedule = () => {
+    setScheduleError('');
+    if (!currentDay) {
+      setScheduleError('يرجى اختيار اليوم');
+      return;
+    }
+    if (!currentTimeFrom) {
+      setScheduleError('يرجى تحديد وقت البدء (من)');
+      return;
+    }
+    if (!currentTimeTo) {
+      setScheduleError('يرجى تحديد وقت الانتهاء (إلى)');
+      return;
+    }
+
+    const newScheduleItem = {
+      visit_day: currentDay,
+      time_from: currentTimeFrom,
+      time_to: currentTimeTo,
+    };
+
+    setSchedules((prev) => [...prev, newScheduleItem]);
+    setCurrentDay('');
+    setCurrentTimeFrom('');
+    setCurrentTimeTo('');
+  };
+
+  // حذف موعد من القائمة
+  const handleRemoveSchedule = (index) => {
+    setSchedules((prev) => prev.filter((_, idx) => idx !== index));
+  };
 
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
@@ -118,16 +173,20 @@ export default function AddDoctorClinicPlanModal({
       const clinicObj = await dispatch(addClinic(clinicPayload)).unwrap();
       const finalClinicId = clinicObj?.id;
 
-      // 3. حفظ/تحديث خطة الزيارة visit_plans (marketClass, visit_frequency, doctor_id, clinic_id)
+      // 3. حفظ/تحديث خطة الزيارة visit_plans ومواعيدها visit_plan_schedules
       let planObj = null;
-      if (finalDocId && (marketClass || visitFrequency || finalClinicId)) {
+      if (finalDocId && (marketClass || visitFrequency || finalClinicId || schedules.length > 0)) {
         try {
           const planPayload = {
             doctor_id: Number(finalDocId),
             clinic_id: finalClinicId ? Number(finalClinicId) : null,
             marketClass: marketClass ? marketClass.trim() : null,
             visit_frequency: visitFrequency ? Number(visitFrequency) : null,
-            schedules: [],
+            schedules: schedules.map((s) => ({
+              visit_day: s.visit_day,
+              time_from: s.time_from.length === 5 ? `${s.time_from}:00` : s.time_from,
+              time_to: s.time_to.length === 5 ? `${s.time_to}:00` : s.time_to,
+            })),
           };
           planObj = await dispatch(addVisitPlan(planPayload)).unwrap();
         } catch (planErr) {
@@ -182,8 +241,8 @@ export default function AddDoctorClinicPlanModal({
           background: '#ffffff',
           borderRadius: '16px',
           width: '100%',
-          maxWidth: '560px',
-          maxHeight: '92vh',
+          maxWidth: '620px',
+          maxHeight: '94vh',
           display: 'flex',
           flexDirection: 'column',
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
@@ -208,10 +267,10 @@ export default function AddDoctorClinicPlanModal({
             <span style={{ fontSize: '24px' }}>🩺</span>
             <div>
               <h3 style={{ fontSize: '1.15rem', fontWeight: 700, margin: 0, color: '#f8fafc' }}>
-                إضافة دكتور وعيادة وخطة الزيارات
+                إضافة دكتور وعيادة وخطة الزيارات ومواعيدها
               </h3>
               <p style={{ fontSize: '12px', color: '#94a3b8', margin: '2px 0 0 0' }}>
-                إضافة طبيب جديد أو عيادة جديدة مع بيانات الخطة والتكرار
+                تسجيل الطبيب والعيادة مع تحديد التصنيف والتكرار وأيام ومواعيد التواجد
               </p>
             </div>
           </div>
@@ -444,7 +503,7 @@ export default function AddDoctorClinicPlanModal({
             </div>
           </div>
 
-          {/* 3. قسم خطة الزيارة والتصنيف (visit_plans) */}
+          {/* 3. قسم خطة وتصنيف الطبيب ومواعيده المتعددة (visit_plans & schedules) */}
           <div
             style={{
               background: '#f0fdf4',
@@ -454,10 +513,11 @@ export default function AddDoctorClinicPlanModal({
             }}
           >
             <div style={{ fontSize: '13.5px', fontWeight: 700, color: '#166534', marginBottom: '12px' }}>
-              📋 3. خطة وتصنيف الطبيب (Visit Plan)
+              📋 3. خطة وتصنيف الطبيب ومواعيد التواجد (Visit Plan & Schedules)
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            {/* التصنيف والتكرار */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                 <label style={{ fontSize: '12.5px', fontWeight: 700, color: '#334155' }}>
                   Market Class (التصنيف):
@@ -491,6 +551,144 @@ export default function AddDoctorClinicPlanModal({
                 />
               </div>
             </div>
+
+            {/* إضافة مواعيد متعددة للزيارات (Schedules) */}
+            <div
+              style={{
+                background: '#ffffff',
+                border: '1px solid #cbd5e1',
+                borderRadius: '10px',
+                padding: '12px',
+              }}
+            >
+              <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#0f172a', marginBottom: '8px' }}>
+                ⏰ مواعيد وأيام تواجد الطبيب (يمكنك إضافة أكثر من موعد):
+              </div>
+
+              {scheduleError && (
+                <div style={{ fontSize: '11.5px', color: '#dc2626', fontWeight: 600, marginBottom: '6px' }}>
+                  ⚠️ {scheduleError}
+                </div>
+              )}
+
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'minmax(110px, 1.2fr) minmax(90px, 1fr) minmax(90px, 1fr) auto',
+                  gap: '8px',
+                  alignItems: 'end',
+                }}
+              >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <label style={{ fontSize: '11.5px', color: '#475569', fontWeight: 600 }}>اليوم:</label>
+                  <select
+                    value={currentDay}
+                    onChange={(e) => setCurrentDay(e.target.value)}
+                    style={{ height: '36px', fontSize: '12px' }}
+                  >
+                    <option value="">اختر اليوم...</option>
+                    {daysOfWeek.map((d) => (
+                      <option key={d.key} value={d.key}>
+                        {d.label} ({d.key})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <label style={{ fontSize: '11.5px', color: '#475569', fontWeight: 600 }}>من:</label>
+                  <input
+                    type="time"
+                    value={currentTimeFrom}
+                    onChange={(e) => setCurrentTimeFrom(e.target.value)}
+                    style={{ height: '36px', fontSize: '12px' }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <label style={{ fontSize: '11.5px', color: '#475569', fontWeight: 600 }}>إلى:</label>
+                  <input
+                    type="time"
+                    value={currentTimeTo}
+                    onChange={(e) => setCurrentTimeTo(e.target.value)}
+                    style={{ height: '36px', fontSize: '12px' }}
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleAddSchedule}
+                  style={{
+                    backgroundColor: '#2563eb',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '6px',
+                    height: '36px',
+                    padding: '0 12px',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  + إضافة موعد
+                </button>
+              </div>
+
+              {/* قائمة المواعيد المضافة */}
+              {schedules.length > 0 && (
+                <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <div style={{ fontSize: '11.5px', color: '#166534', fontWeight: 700 }}>
+                    📌 المواعيد المحددة ({schedules.length}):
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                    {schedules.map((s, idx) => {
+                      const dayObj = daysOfWeek.find((d) => d.key === s.visit_day);
+                      const dayLabel = dayObj ? dayObj.label : s.visit_day;
+                      return (
+                        <div
+                          key={idx}
+                          style={{
+                            background: '#eff6ff',
+                            border: '1px solid #bfdbfe',
+                            borderRadius: '6px',
+                            padding: '4px 8px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            fontSize: '12px',
+                            color: '#1e40af',
+                            fontWeight: 600,
+                          }}
+                        >
+                          <span>
+                            🗓️ {dayLabel}: {s.time_from} - {s.time_to}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveSchedule(idx)}
+                            style={{
+                              background: '#fee2e2',
+                              border: 'none',
+                              color: '#dc2626',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              padding: '1px 5px',
+                              fontSize: '10px',
+                              fontWeight: 700,
+                              minHeight: 'auto',
+                            }}
+                            title="حذف هذا الموعد"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Footer Actions */}
@@ -499,7 +697,7 @@ export default function AddDoctorClinicPlanModal({
               display: 'flex',
               justifyContent: 'flex-end',
               gap: '10px',
-              marginTop: '10px',
+              marginTop: '6px',
               paddingTop: '12px',
               borderTop: '1px solid #e2e8f0',
             }}

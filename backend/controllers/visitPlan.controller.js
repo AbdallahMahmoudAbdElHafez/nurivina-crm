@@ -36,6 +36,7 @@ const create = async (req, res, next) => {
     }
 
     if (schedules && schedules.length > 0) {
+      await Schedule.destroy({ where: { visit_plan_id: plan.id } });
       const formattedSchedules = schedules.map((s) => ({
         visit_plan_id: plan.id,
         visit_day: s.visit_day,
