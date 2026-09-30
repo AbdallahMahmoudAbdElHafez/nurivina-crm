@@ -630,46 +630,25 @@ export default function VisitTable() {
             <button
               type="button"
               onClick={() => {
-                setModalDoctorId('');
+                setModalDoctorId(doctorId || '');
                 setIsDoctorClinicPlanModalOpen(true);
               }}
               style={{
                 background: '#eff6ff',
                 border: '1px solid #bfdbfe',
                 color: '#1d4ed8',
-                padding: '5px 12px',
-                borderRadius: '7px',
+                padding: '6px 14px',
+                borderRadius: '8px',
                 fontSize: '12.5px',
                 cursor: 'pointer',
                 fontWeight: 700,
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '5px',
+                gap: '6px',
+                transition: 'all 0.15s ease',
               }}
             >
-              🩺 + دكتور وعيادة وخطة جديدة
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setModalDoctorId(doctorId || '');
-                setIsDoctorClinicPlanModalOpen(true);
-              }}
-              style={{
-                background: '#f0fdf4',
-                border: '1px solid #bbf7d0',
-                color: '#166534',
-                padding: '5px 12px',
-                borderRadius: '7px',
-                fontSize: '12.5px',
-                cursor: 'pointer',
-                fontWeight: 700,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '5px',
-              }}
-            >
-              🏥 + إضافة عيادة / خطة لطبيب
+              🩺 + إضافة دكتور / عيادة / خطة
             </button>
           </div>
         </div>
