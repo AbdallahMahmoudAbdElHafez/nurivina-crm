@@ -162,6 +162,39 @@ export default function VisitTable() {
   const [sessionAddedClinics, setSessionAddedClinics] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // حالة مشاركة الموقع قبل تسجيل الزيارة
+  const [sharedLocation, setSharedLocation] = useState(null); // { lat, lng, time }
+  const [isLocating, setIsLocating] = useState(false);
+  const [locationError, setLocationError] = useState('');
+
+  // دالة تحديد ومشاركة الموقع لنموذج الزيارة
+  const handleCaptureLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationError('متصفحك لا يدعم تحديد الموقع الجغرافي GPS');
+      return;
+    }
+
+    setIsLocating(true);
+    setLocationError('');
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        const time = new Date().toISOString();
+        setSharedLocation({ lat, lng, time });
+        setIsLocating(false);
+        setLocationError('');
+      },
+      (err) => {
+        console.error('Location capture error:', err);
+        setIsLocating(false);
+        setLocationError('تعذر الحصول على الموقع. يرجى تفعيل الـ GPS والسماح للمتصفح بالوصول للموقع.');
+      },
+      { timeout: 10000, enableHighAccuracy: true }
+    );
+  };
+
   useEffect(() => {
     dispatch(fetchVisits());
     dispatch(fetchDoctors());
@@ -352,6 +385,14 @@ export default function VisitTable() {
       return;
     }
 
+    // 0. التحقق الإلزامي من مشاركة الموقع GPS قبل حفظ الزيارة
+    if (!sharedLocation || !sharedLocation.lat || !sharedLocation.lng) {
+      alert('⚠️ يجب مشاركة موقعك الجغرافي (Share Location) أولاً قبل تسجيل الزيارة!');
+      handleCaptureLocation();
+      setIsSubmitting(false);
+      return;
+    }
+
     if (!weekNumber) {
       alert('يرجى إدخال رقم الأسبوع');
       setIsSubmitting(false);
@@ -376,6 +417,11 @@ export default function VisitTable() {
       notes,
       is_new_doctor: newDoctorFlag,
       is_new_clinic: newClinicFlag,
+      visit_lat: sharedLocation.lat,
+      visit_lng: sharedLocation.lng,
+      shared_lat: sharedLocation.lat,
+      shared_lng: sharedLocation.lng,
+      shared_at: sharedLocation.time || new Date().toISOString(),
     };
 
     try {
@@ -388,6 +434,8 @@ export default function VisitTable() {
       setIsAddingNewDoctor(false);
       setNewDoctorName('');
       setSessionAddedClinics([]);
+      setSharedLocation(null);
+      setLocationError('');
 
       // عرض رسالة إذا كانت الزيارة تحتاج اعتماد
       if (result?.status === 'pending_approval') {
@@ -396,7 +444,9 @@ export default function VisitTable() {
         else if (result?.approval_type === 'new_clinic') reasonText = 'عيادة جديدة - بانتظار اعتماد المدير';
         else if (result?.approval_type === 'location_deviation') reasonText = `انحراف موقع (${result?.deviation_meters}م) - بانتظار اعتماد المدير`;
         
-        alert(`⏳ تم تسجيل الزيارة: ${reasonText}`);
+        alert(`⏳ تم تسجيل الزيارة بنجاح: ${reasonText}`);
+      } else {
+        alert('✅ تم تسجيل الزيارة ومشاركة موقعك بنجاح!');
       }
     } catch (err) {
       console.error('Error adding visit:', err);
@@ -791,7 +841,7 @@ export default function VisitTable() {
           </div>
 
           {/* الملاحظات */}
-          <div style={{ flex: '2 1 300px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <div style={{ flex: '2 1 260px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <label style={{ fontSize: '12px', fontWeight: 600, color: '#475569' }}>ملاحظات:</label>
             <textarea
               placeholder="ملاحظات الزيارة..."
@@ -817,29 +867,111 @@ export default function VisitTable() {
             />
           </div>
 
+          {/* مشاركة الموقع الإلزامية (Share Location) */}
+          <div style={{ flex: '1 1 220px', display: 'flex', flexDirection: 'column', gap: '4px', alignSelf: 'flex-start' }}>
+            <label style={{ fontSize: '12px', fontWeight: 700, color: '#1e293b' }}>
+              📍 مشاركة الموقع الحالي <span style={{ color: '#dc2626' }}>* (إلزامي)</span>:
+            </label>
+
+            {sharedLocation ? (
+              <div
+                style={{
+                  background: '#f0fdf4',
+                  border: '1px solid #86efac',
+                  borderRadius: '8px',
+                  padding: '8px 10px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '12px', color: '#166534', fontWeight: 700 }}>
+                    ✅ تم التقاط الموقع بنجاح
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleCaptureLocation}
+                    disabled={isLocating}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: '#2563eb',
+                      fontSize: '11px',
+                      textDecoration: 'underline',
+                      cursor: 'pointer',
+                      padding: 0,
+                    }}
+                  >
+                    تحديث الموقع
+                  </button>
+                </div>
+                <div style={{ fontSize: '11px', color: '#475569' }}>
+                  الإحداثيات: {sharedLocation.lat.toFixed(5)}, {sharedLocation.lng.toFixed(5)}
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={handleCaptureLocation}
+                disabled={isLocating}
+                style={{
+                  backgroundColor: isLocating ? '#93c5fd' : '#2563eb',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '10px 14px',
+                  fontWeight: 700,
+                  fontSize: '13px',
+                  cursor: isLocating ? 'wait' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  boxShadow: '0 2px 5px rgba(37, 99, 235, 0.25)',
+                  minHeight: '42px',
+                }}
+              >
+                {isLocating ? '⏳ جارٍ تحديد موقعك...' : '📍 مشاركة موقعي الآن (GPS)'}
+              </button>
+            )}
+
+            {locationError && (
+              <span style={{ fontSize: '11px', color: '#dc2626', fontWeight: 600 }}>
+                ⚠️ {locationError}
+              </span>
+            )}
+            {!sharedLocation && !locationError && (
+              <span style={{ fontSize: '11px', color: '#64748b' }}>
+                اضغط لتسجيل إحداثيات موقعك قبل حفظ الزيارة
+              </span>
+            )}
+          </div>
+
           {/* زر الحفظ */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignSelf: 'flex-end' }}>
             <label style={{ fontSize: '12px', opacity: 0 }}>حفظ</label>
             <button
               onClick={handleAddVisit}
-              disabled={isSubmitting}
+              disabled={isSubmitting || isLocating}
               className="form-btn-full"
               style={{
-                backgroundColor: '#16a34a',
+                backgroundColor: !sharedLocation ? '#64748b' : '#16a34a',
                 color: '#ffffff',
                 border: 'none',
                 borderRadius: '7px',
                 fontWeight: 700,
                 fontSize: '13.5px',
-                cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                cursor: (isSubmitting || isLocating) ? 'not-allowed' : 'pointer',
                 whiteSpace: 'nowrap',
-                padding: '9px 18px',
-                minHeight: '38px',
+                padding: '10px 18px',
+                minHeight: '42px',
                 height: 'auto',
                 lineHeight: 1.4,
                 transition: 'background-color 0.2s',
                 opacity: isSubmitting ? 0.7 : 1,
               }}
+              title={!sharedLocation ? 'يرجى مشاركة الموقع أولاً' : 'حفظ الزيارة'}
             >
               {isSubmitting ? '⏳ جاري الحفظ...' : '+ إضافة زيارة'}
             </button>
