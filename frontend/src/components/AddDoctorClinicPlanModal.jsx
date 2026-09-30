@@ -26,6 +26,7 @@ export default function AddDoctorClinicPlanModal({
   const { list: doctors } = useSelector((state) => state.doctors);
   const { list: clinics } = useSelector((state) => state.clinics);
   const { list: cities } = useSelector((state) => state.cities);
+  const { list: visitPlans } = useSelector((state) => state.visitPlans);
 
   // وضع اختيار الدكتور: 'existing' أو 'new'
   const [doctorMode, setDoctorMode] = useState('new'); // 'new' | 'existing'
@@ -42,6 +43,9 @@ export default function AddDoctorClinicPlanModal({
   const [marketClass, setMarketClass] = useState('');
   const [visitFrequency, setVisitFrequency] = useState('');
 
+  // هل حقول الخطة معطلة (لأنه دكتور موجود بالفعل ولديه تصنيف وخطة سابقة)
+  const isExistingDoctor = doctorMode === 'existing' && !!selectedDoctorId;
+
   // مواعيد وجدول الزيارات المتعددة (visit_plan_schedules)
   const [schedules, setSchedules] = useState([]);
   const [currentDay, setCurrentDay] = useState('');
@@ -51,6 +55,27 @@ export default function AddDoctorClinicPlanModal({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  // عند تغيير وضع الطبيب أو اختيار طبيب موجود
+  useEffect(() => {
+    if (doctorMode === 'existing' && selectedDoctorId) {
+      // البحث عن أحدث خطة للطبيب المحدد
+      const existingPlan = visitPlans && visitPlans.find(
+        (vp) => String(vp.doctor_id) === String(selectedDoctorId)
+      );
+      if (existingPlan) {
+        setMarketClass(existingPlan.marketClass || '');
+        setVisitFrequency(existingPlan.visit_frequency != null ? String(existingPlan.visit_frequency) : '');
+      } else {
+        setMarketClass('');
+        setVisitFrequency('');
+      }
+    } else if (doctorMode === 'new') {
+      // وضع طبيب جديد - الحقول قابلة للإدخال
+      setMarketClass('');
+      setVisitFrequency('');
+    }
+  }, [doctorMode, selectedDoctorId, visitPlans]);
 
   useEffect(() => {
     if (isOpen) {
@@ -72,8 +97,6 @@ export default function AddDoctorClinicPlanModal({
       setClinicAddress('');
       setClinicPhone('');
       setCityId('');
-      setMarketClass('');
-      setVisitFrequency('');
       setSchedules([]);
       setCurrentDay('');
       setCurrentTimeFrom('');
@@ -84,6 +107,7 @@ export default function AddDoctorClinicPlanModal({
       if (!cities || cities.length === 0) dispatch(fetchCities());
       if (!doctors || doctors.length === 0) dispatch(fetchDoctors());
       if (!clinics || clinics.length === 0) dispatch(fetchClinics());
+      if (!visitPlans || visitPlans.length === 0) dispatch(fetchVisitPlans());
     }
   }, [isOpen, initialDoctorId, initialDoctorName, dispatch]);
 
@@ -517,6 +541,22 @@ export default function AddDoctorClinicPlanModal({
             </div>
 
             {/* التصنيف والتكرار */}
+            {isExistingDoctor && (
+              <div
+                style={{
+                  fontSize: '11.5px',
+                  color: '#0369a1',
+                  backgroundColor: '#e0f2fe',
+                  border: '1px solid #bae6fd',
+                  padding: '6px 10px',
+                  borderRadius: '6px',
+                  marginBottom: '10px',
+                  fontWeight: 600,
+                }}
+              >
+                ℹ️ تم جلب تصنيف وتكرار الزيارة تلقائياً من الخطة المسجلة لهذا الطبيب.
+              </div>
+            )}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                 <label style={{ fontSize: '12.5px', fontWeight: 700, color: '#334155' }}>
@@ -525,7 +565,13 @@ export default function AddDoctorClinicPlanModal({
                 <select
                   value={marketClass}
                   onChange={(e) => setMarketClass(e.target.value)}
-                  style={{ width: '100%', backgroundColor: '#ffffff' }}
+                  disabled={isExistingDoctor}
+                  style={{
+                    width: '100%',
+                    backgroundColor: isExistingDoctor ? '#f1f5f9' : '#ffffff',
+                    cursor: isExistingDoctor ? 'not-allowed' : 'default',
+                    color: isExistingDoctor ? '#64748b' : '#0f172a',
+                  }}
                 >
                   <option value="">اختر التصنيف (اختياري)...</option>
                   <option value="Class A+">Class A+</option>
@@ -547,7 +593,13 @@ export default function AddDoctorClinicPlanModal({
                   placeholder="مثال: 2 أو 4 شهرياً"
                   value={visitFrequency}
                   onChange={(e) => setVisitFrequency(e.target.value)}
-                  style={{ width: '100%', backgroundColor: '#ffffff' }}
+                  disabled={isExistingDoctor}
+                  style={{
+                    width: '100%',
+                    backgroundColor: isExistingDoctor ? '#f1f5f9' : '#ffffff',
+                    cursor: isExistingDoctor ? 'not-allowed' : 'text',
+                    color: isExistingDoctor ? '#64748b' : '#0f172a',
+                  }}
                 />
               </div>
             </div>
