@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { MaterialReactTable } from 'material-react-table';
 import { fetchVisits, addVisit, updateVisitLocally } from '../features/visits/visitsSlice';
+import { fetchVisitPlans } from '../features/visitPlans/visitPlansSlice';
 import api from '../api/apiClient';
 import { fetchDoctors, addDoctor } from '../features/doctors/doctorsSlice';
 import { fetchClinics, addClinic } from '../features/clinics/clinicsSlice';
@@ -144,6 +145,7 @@ function LocationCell({ lat, lng, sharedAt }) {
 export default function VisitTable() {
   const dispatch = useDispatch();
   const { list, status } = useSelector((s) => s.visits);
+  const { list: visitPlans } = useSelector((s) => s.visitPlans || { list: [] });
   const doctors = useSelector((s) => s.doctors.list);
   const clinics = useSelector((s) => s.clinics.list);
   const { list: cities } = useSelector((s) => s.cities);
@@ -197,12 +199,14 @@ export default function VisitTable() {
 
   useEffect(() => {
     dispatch(fetchVisits());
+    dispatch(fetchVisitPlans());
     dispatch(fetchDoctors());
     dispatch(fetchClinics());
     dispatch(fetchCities());
 
     const handleDataSynced = () => {
       dispatch(fetchVisits());
+      dispatch(fetchVisitPlans());
       dispatch(fetchDoctors());
       dispatch(fetchClinics());
       dispatch(fetchCities());
@@ -211,19 +215,19 @@ export default function VisitTable() {
     return () => window.removeEventListener('crm_data_synced', handleDataSynced);
   }, [dispatch]);
 
-  // حساب العيادات المرتبطة بالطبيب المختار من جدول الزيارات السابقة والعيادات المضافة حديثاً
+  // حساب العيادات المرتبطة بالطبيب المختار من جدول خطط الزيارات (visit_plans) والعيادات المضافة حديثاً
   const { associatedClinics, otherClinics } = useMemo(() => {
     if (!doctorId || isAddingNewDoctor || doctorId === '__NEW__') {
       return { associatedClinics: sessionAddedClinics, otherClinics: clinics };
     }
 
-    // استخراج معرّفات العيادات التي زارها المندوب مع هذا الطبيب سابقاً
-    const doctorVisits = (list || []).filter(
-      (v) => String(v.doctor_id || v.doctor?.id) === String(doctorId)
+    // استخراج معرّفات العيادات المسجلة لهذا الطبيب من جدول خطط الزيارات (visit_plans)
+    const doctorPlans = (visitPlans || []).filter(
+      (p) => String(p.doctor_id || p.doctor?.id) === String(doctorId)
     );
 
     const associatedIds = new Set(
-      doctorVisits.map((v) => String(v.clinic_id || v.clinic?.id)).filter(Boolean)
+      doctorPlans.map((p) => String(p.clinic_id || p.clinic?.id)).filter(Boolean)
     );
 
     // إضافة العيادات التي تمت إضافتها في هذه الجلسة
@@ -253,7 +257,7 @@ export default function VisitTable() {
     });
 
     return { associatedClinics: associated, otherClinics: others };
-  }, [doctorId, isAddingNewDoctor, list, clinics, sessionAddedClinics]);
+  }, [doctorId, isAddingNewDoctor, visitPlans, clinics, sessionAddedClinics]);
 
   // عند تغيير الطبيب
   const handleDoctorChange = (val) => {
@@ -265,12 +269,12 @@ export default function VisitTable() {
       setDoctorId(val);
 
       if (val) {
-        // فحص العيادات المسجلة لهذا الطبيب سابقاً من واقع جدول الزيارات
-        const doctorVisits = (list || []).filter(
-          (v) => String(v.doctor_id || v.doctor?.id) === String(val)
+        // فحص العيادات المسجلة لهذا الطبيب من جدول خطط الزيارات visit_plans
+        const doctorPlans = (visitPlans || []).filter(
+          (p) => String(p.doctor_id || p.doctor?.id) === String(val)
         );
         const associatedIds = new Set(
-          doctorVisits.map((v) => String(v.clinic_id || v.clinic?.id)).filter(Boolean)
+          doctorPlans.map((p) => String(p.clinic_id || p.clinic?.id)).filter(Boolean)
         );
         sessionAddedClinics.forEach((sc) => {
           if (String(sc.forDoctorId) === String(val)) {
@@ -283,9 +287,11 @@ export default function VisitTable() {
         if (matched.length === 0) {
           setClinicId('');
         } else if (matched.length === 1) {
+          // لديه عيادة واحدة مسجلة في خطته: اختيار تلقائي مباشر
           setClinicId(String(matched[0].id));
         } else {
-          setClinicId('');
+          // لديه أكثر من عيادة: نختار الأولى أو نجعلها فارغة للاختيار
+          setClinicId(String(matched[0].id));
         }
       } else {
         setClinicId('');
