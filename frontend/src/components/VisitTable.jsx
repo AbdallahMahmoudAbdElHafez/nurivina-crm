@@ -748,13 +748,29 @@ export default function VisitTable() {
           </div>
 
           {/* الملاحظات */}
-          <div style={{ flex: '1 1 160px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <div style={{ flex: '2 1 300px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <label style={{ fontSize: '12px', fontWeight: 600, color: '#475569' }}>ملاحظات:</label>
-            <input
-              type="text"
+            <textarea
               placeholder="ملاحظات الزيارة..."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
+              rows={4}
+              style={{
+                resize: 'vertical',
+                minHeight: '100px',
+                maxHeight: '300px',
+                width: '100%',
+                padding: '10px 12px',
+                borderRadius: '8px',
+                border: '1px solid #cbd5e1',
+                fontSize: '14px',
+                fontFamily: 'inherit',
+                lineHeight: '1.6',
+                outline: 'none',
+                transition: 'border-color 0.2s',
+              }}
+              onFocus={(e) => (e.target.style.borderColor = '#3b82f6')}
+              onBlur={(e) => (e.target.style.borderColor = '#cbd5e1')}
             />
           </div>
 
