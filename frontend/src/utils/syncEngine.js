@@ -50,14 +50,17 @@ class SyncEngine {
       this.syncAll();
     });
 
+    // قد يعود الاتصال أثناء وجود التطبيق في الخلفية دون وصول حدث online.
+    window.addEventListener('focus', () => this.syncAll());
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') this.syncAll();
+    });
+    window.addEventListener('crm_queue_updated', () => this.syncAll());
+
     // فحص دوري كل 30 ثانية في حال توفر الإنترنت ووجود عمليات معلقة
     setInterval(() => {
       if (navigator.onLine && !this.isSyncing) {
-        getSyncQueueCount().then((count) => {
-          if (count > 0) {
-            this.syncAll();
-          }
-        });
+        this.syncAll();
       }
     }, 30000);
   }
@@ -87,13 +90,46 @@ class SyncEngine {
       return;
     }
 
+    // حجز دورة المزامنة قبل قراءة الطابور حتى لا تبدأ دورتان معاً.
+    this.isSyncing = true;
+    this.lastError = null;
+    try {
+      return await this.syncQueue();
+    } catch (err) {
+      this.lastError = this.getErrorInfo(err);
+      const remainingCount = await getSyncQueueCount().catch(() => 0);
+      this.notify({
+        type: 'SYNC_FINISHED',
+        syncedCount: 0,
+        failedCount: 1,
+        pendingCount: remainingCount,
+        error: this.lastError,
+      });
+      return { successCount: 0, failCount: 1, remainingCount };
+    } finally {
+      this.isSyncing = false;
+    }
+  }
+
+  getErrorInfo(err) {
+    const status = err.response?.status;
+    return {
+      status,
+      message: status === 401
+        ? 'انتهت جلسة الدخول. سجّل الدخول مجدداً بنفس الحساب لإرسال البيانات المحفوظة.'
+        : status === 403
+        ? 'السيرفر رفض العملية بسبب الصلاحيات. البيانات ما زالت محفوظة محلياً.'
+        : err.response?.data?.message || err.message || 'تعذر إرسال البيانات. ستتم إعادة المحاولة تلقائياً.',
+    };
+  }
+
+  async syncQueue() {
     const queue = await getSyncQueue();
     if (queue.length === 0) {
       this.notify({ type: 'IDLE', pendingCount: 0 });
       return;
     }
 
-    this.isSyncing = true;
     this.notify({ type: 'SYNC_STARTED', total: queue.length });
 
     let successCount = 0;
@@ -101,25 +137,23 @@ class SyncEngine {
 
     for (const item of queue) {
       try {
-        let endpoint = item.endpoint;
-        let payload = { ...item.payload };
+        const endpoint = item.endpoint.split('/').map((part) => this.resolveId(part)).join('/');
+        const payload = { ...item.payload };
+        const idFields = ['visit_id', 'doctor_id', 'clinic_id', 'city_id'];
 
-        // 1. فحص الـ endpoint وتحديث المعرفات المؤقتة إذا كانت مطابقة لمعرف حقيقي
-        for (const [tempId, realId] of Object.entries(this.tempIdMap)) {
-          if (endpoint.includes(tempId)) {
-            endpoint = endpoint.replace(tempId, realId);
+        // إرسال الأرقام الحقيقية بعد نجاح إنشاء البيانات المرتبطة.
+        for (const field of idFields) {
+          if (payload[field] != null) payload[field] = this.resolveId(payload[field]);
+        }
+
+        // لا نرسل زيارة أو خطة قبل نجاح إنشاء الطبيب/العيادة التي تعتمد عليها.
+        if (endpoint.split('/').some((part) => part.startsWith('temp_')) ||
+            idFields.some((field) => String(payload[field]).startsWith('temp_'))) {
+          failCount++;
+          if (!this.lastError) {
+            this.lastError = { message: 'توجد بيانات تنتظر مزامنة السجلات المرتبطة بها. ستتم إعادة المحاولة تلقائياً.' };
           }
-        }
-
-        // 2. فحص الحقول في الـ payload واستبدال أي معرف مؤقت
-        if (payload.visit_id && this.tempIdMap[payload.visit_id]) {
-          payload.visit_id = this.tempIdMap[payload.visit_id];
-        }
-        if (payload.doctor_id && this.tempIdMap[payload.doctor_id]) {
-          payload.doctor_id = this.tempIdMap[payload.doctor_id];
-        }
-        if (payload.clinic_id && this.tempIdMap[payload.clinic_id]) {
-          payload.clinic_id = this.tempIdMap[payload.clinic_id];
+          continue;
         }
 
         // 3. إرسال الطلب إلى السيرفر
@@ -130,27 +164,15 @@ class SyncEngine {
         });
 
         // 4. استخراج المعرف الجديد وتحديث الـ Mapping والكاش المحلي
-        if (item.type === 'CREATE_VISIT' && item.tempId) {
-          const createdVisit = response.data?.visit || response.data;
-          const realVisitId = createdVisit?.visit_id || createdVisit?.id;
-          if (realVisitId) {
-            this.saveTempIdMapping(item.tempId, realVisitId);
-            await this.updateVisitInLocalCache(item.tempId, realVisitId, createdVisit);
+        if (item.type.startsWith('CREATE_') && item.tempId) {
+          const createdItem = response.data?.visit || response.data;
+          const realId = createdItem?.visit_id || createdItem?.id;
+          if (!realId) {
+            throw new Error('لم يؤكد السيرفر رقم السجل الجديد. العملية ما زالت محفوظة لإعادة المحاولة.');
           }
-        } else if (item.type === 'CREATE_PLAN' && item.tempId) {
-          const realPlanId = response.data?.id;
-          if (realPlanId) {
-            this.saveTempIdMapping(item.tempId, realPlanId);
-          }
-        } else if (item.type === 'CREATE_DOCTOR' && item.tempId) {
-          const realDocId = response.data?.id;
-          if (realDocId) {
-            this.saveTempIdMapping(item.tempId, realDocId);
-          }
-        } else if (item.type === 'CREATE_CLINIC' && item.tempId) {
-          const realClinicId = response.data?.id;
-          if (realClinicId) {
-            this.saveTempIdMapping(item.tempId, realClinicId);
+          this.saveTempIdMapping(item.tempId, realId);
+          if (item.type === 'CREATE_VISIT') {
+            await this.updateVisitInLocalCache(item.tempId, realId, createdItem);
           }
         }
 
@@ -160,20 +182,15 @@ class SyncEngine {
       } catch (err) {
         console.warn('فشل مزامنة العملية المعلقة:', item, err.message);
         failCount++;
+        if (!this.lastError) this.lastError = this.getErrorInfo(err);
         // إذا كان الخطأ متعلقاً بالاتصال، نوقف الدورة ونحاول لاحقاً
-        if (!navigator.onLine || err.code === 'ERR_NETWORK' || !err.response) {
+        if (!navigator.onLine || err.code === 'ERR_NETWORK' || !err.response || err.response.status === 401) {
           break;
         }
-        // في حالة وجود خطأ دائم من السيرفر (كبيانات غير صالحة 400)، نرفع عدد المحاولات
-        item.retries = (item.retries || 0) + 1;
-        if (item.retries >= 5) {
-          console.error('تجاوزت العملية الحد الأقصى للمحاولات وتم إزالتها:', item);
-          await removeSyncQueueItem(item.id);
-        }
+        // تظل العملية في الطابور حتى يؤكد السيرفر نجاحها.
       }
     }
 
-    this.isSyncing = false;
     this.lastSyncTime = Date.now();
 
     const remainingCount = await getSyncQueueCount();
@@ -184,6 +201,7 @@ class SyncEngine {
       failedCount: failCount,
       pendingCount: remainingCount,
       timestamp: this.lastSyncTime,
+      error: this.lastError,
     });
 
     if (successCount > 0) {

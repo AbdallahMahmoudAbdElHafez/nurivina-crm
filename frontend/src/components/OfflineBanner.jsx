@@ -5,7 +5,7 @@ import React from 'react';
 import useNetworkStatus from '../hooks/useNetworkStatus';
 
 export default function OfflineBanner() {
-  const { isOnline, pendingCount, isSyncing, syncNow } = useNetworkStatus();
+  const { isOnline, pendingCount, isSyncing, syncNow, lastSyncResult } = useNetworkStatus();
 
   // إذا كنا متصلين ولا توجد أي عمليات معلقة، لا داعي لعرض الشريط
   if (isOnline && pendingCount === 0 && !isSyncing) {
@@ -57,6 +57,11 @@ export default function OfflineBanner() {
               ? `يتم الآن إرسال ${pendingCount} عملية محفوظة إلى السيرفر الرئيسي...`
               : `لديك ${pendingCount} عملية تم حفظها محلياً وجاهزة للإرسال إلى قاعدة البيانات.`}
           </div>
+          {isOnline && !isSyncing && lastSyncResult?.error && (
+            <div role="alert" style={{ fontSize: '12px', color: '#b91c1c', marginTop: '4px' }}>
+              {lastSyncResult.error.message}
+            </div>
+          )}
         </div>
       </div>
 

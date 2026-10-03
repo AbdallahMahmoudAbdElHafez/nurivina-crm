@@ -208,7 +208,7 @@ export default function AddDoctorClinicPlanModal({
           clinic_name: clinicName.trim(),
           address: clinicAddress.trim() || null,
           clinic_phone: clinicPhone.trim() || null,
-          city_id: cityId ? Number(cityId) : null,
+          city_id: cityId || null,
         };
         clinicObj = await dispatch(addClinic(clinicPayload)).unwrap();
         finalClinicId = clinicObj?.id;
@@ -221,8 +221,8 @@ export default function AddDoctorClinicPlanModal({
       if (finalDocId && (marketClass || visitFrequency || finalClinicId || schedules.length > 0)) {
         try {
           const planPayload = {
-            doctor_id: Number(finalDocId),
-            clinic_id: finalClinicId ? Number(finalClinicId) : null,
+            doctor_id: finalDocId,
+            clinic_id: finalClinicId || null,
             marketClass: marketClass ? marketClass.trim() : null,
             visit_frequency: visitFrequency ? Number(visitFrequency) : null,
             schedules: schedules.map((s) => ({

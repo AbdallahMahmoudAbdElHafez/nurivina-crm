@@ -2,6 +2,7 @@
 // يراقب الاتصال بالإنترنت، وعند العودة يرسل كل البيانات والمواقع المحفوظة offline
 
 import { useEffect } from 'react';
+import { useSelector } from 'react-redux';
 import syncEngine from '../utils/syncEngine';
 import { addToSyncQueue, updateCachedItemInList } from '../utils/indexedDB';
 
@@ -18,13 +19,6 @@ export function getPendingLocations() {
 
 // متوافق مع الكود السابق لحفظ الموقع مع ربطه بمحرك المزامنة الجديد
 export async function savePendingLocation(visitId, lat, lng, sharedAt = new Date().toISOString()) {
-  // 1. الحفظ في localStorage للتوافق العكسي
-  try {
-    const pending = getPendingLocations();
-    pending.push({ visitId, lat, lng, sharedAt });
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(pending));
-  } catch (_) {}
-
   // 2. تحديث الكاش المحلي فوراً لتظهر الإحداثيات في الجدول فوراً
   await updateCachedItemInList('visits', 'visit_id', visitId, {
     shared_lat: lat,
@@ -109,7 +103,9 @@ async function migrateLegacyPendingLocations() {
 }
 
 export default function useOfflineSync() {
+  const token = useSelector((state) => state.auth.token);
   useEffect(() => {
+    if (!token) return;
     // ترحيل البيانات السابقة ومحاولة المزامنة عند بدء التطبيق
     migrateLegacyPendingLocations().then(() => {
       if (navigator.onLine) {
@@ -117,12 +113,5 @@ export default function useOfflineSync() {
       }
     });
 
-    const handleOnline = () => {
-      console.info('🌐 عاد الاتصال — جاري فحص ومزامنة البيانات المحفوظة...');
-      syncEngine.syncAll();
-    };
-
-    window.addEventListener('online', handleOnline);
-    return () => window.removeEventListener('online', handleOnline);
-  }, []);
+  }, [token]);
 }

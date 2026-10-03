@@ -44,7 +44,7 @@ export default function AddClinicModal({ isOpen, onClose, onClinicAdded, default
         clinic_name: clinicName.trim(),
         address: address.trim() || null,
         clinic_phone: clinicPhone.trim() || null,
-        city_id: cityId ? Number(cityId) : null,
+        city_id: cityId || null,
       };
 
       const res = await dispatch(addClinic(payload)).unwrap();
