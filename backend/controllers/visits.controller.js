@@ -82,6 +82,8 @@ const createVisit = async (req, res, next) => {
       is_new_clinic,   // هل العيادة جديدة (أضافها المندوب في هذه الزيارة)
       visit_lat,
       visit_lng,
+      shared_at,
+      sharedAt,
     } = req.body;
 
     let status = 'approved';
@@ -107,6 +109,8 @@ const createVisit = async (req, res, next) => {
       }
     }
 
+    const recordedSharedAt = shared_at || sharedAt;
+
     const visit = await Visit.create({
       user_id,
       doctor_id,
@@ -121,7 +125,9 @@ const createVisit = async (req, res, next) => {
       created_clinic_id,
       shared_lat: visit_lat || null,
       shared_lng: visit_lng || null,
-      shared_at: (visit_lat && visit_lng) ? new Date() : null,
+      shared_at: (visit_lat && visit_lng)
+        ? (recordedSharedAt ? new Date(recordedSharedAt) : new Date())
+        : null,
     });
 
     const fullVisit = await Visit.findByPk(visit.visit_id, {
