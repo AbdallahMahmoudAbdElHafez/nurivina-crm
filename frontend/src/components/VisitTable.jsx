@@ -30,7 +30,10 @@ function ShareLocationBtn({ visitId, onSuccess }) {
       async (position) => {
         const lat = position.coords.latitude;
         const lng = position.coords.longitude;
-        const sharedAt = new Date().toISOString();
+        // استخدام الوقت الفعلي الخاص بإشارة الـ GPS (position.timestamp) بدلاً من توقيت الموبايل الداخلي لمنع التلاعب
+        const sharedAt = position.timestamp 
+          ? new Date(position.timestamp).toISOString() 
+          : new Date().toISOString();
 
         if (navigator.onLine) {
           try {
@@ -183,7 +186,8 @@ export default function VisitTable() {
       (pos) => {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
-        const time = new Date().toISOString();
+        // استخدام الوقت الصادر من إشارة الـ GPS
+        const time = pos.timestamp ? new Date(pos.timestamp).toISOString() : new Date().toISOString();
         setSharedLocation({ lat, lng, time });
         setIsLocating(false);
         setLocationError('');
