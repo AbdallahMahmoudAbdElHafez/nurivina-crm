@@ -28,12 +28,14 @@ export default function AddDoctorClinicPlanModal({
   const { list: cities } = useSelector((state) => state.cities);
   const { list: visitPlans } = useSelector((state) => state.visitPlans);
 
-  // وضع اختيار الدكتور: 'existing' أو 'new'
+  // وضع اختيار الدكتور: 'new' أو 'existing'
   const [doctorMode, setDoctorMode] = useState('new'); // 'new' | 'existing'
   const [selectedDoctorId, setSelectedDoctorId] = useState('');
   const [newDoctorName, setNewDoctorName] = useState('');
 
-  // تفاصيل العيادة
+  // وضع اختيار العيادة: 'existing' أو 'new'
+  const [clinicMode, setClinicMode] = useState('existing'); // 'existing' | 'new'
+  const [selectedClinicId, setSelectedClinicId] = useState('');
   const [clinicName, setClinicName] = useState('');
   const [clinicAddress, setClinicAddress] = useState('');
   const [clinicPhone, setClinicPhone] = useState('');
@@ -93,6 +95,8 @@ export default function AddDoctorClinicPlanModal({
         setSelectedDoctorId('');
       }
 
+      setClinicMode('existing');
+      setSelectedClinicId('');
       setClinicName('');
       setClinicAddress('');
       setClinicPhone('');
@@ -170,9 +174,20 @@ export default function AddDoctorClinicPlanModal({
     }
 
     // التحقق من العيادة
-    if (!clinicName.trim()) {
-      setErrorMsg('يرجى إدخال اسم العيادة الجديدة');
-      return;
+    let finalClinicId = selectedClinicId;
+    let clinicObj = null;
+
+    if (clinicMode === 'new') {
+      if (!clinicName.trim()) {
+        setErrorMsg('يرجى إدخال اسم العيادة الجديدة');
+        return;
+      }
+    } else {
+      if (!selectedClinicId) {
+        setErrorMsg('يرجى اختيار العيادة من قائمة العيادات المتاحة أو إضافة عيادة جديدة');
+        return;
+      }
+      clinicObj = clinics.find((c) => String(c.id) === String(selectedClinicId));
     }
 
     setIsSubmitting(true);
@@ -187,15 +202,19 @@ export default function AddDoctorClinicPlanModal({
         doctorObj = doctors.find((d) => String(d.id) === String(finalDocId));
       }
 
-      // 2. إضافة العيادة الجديدة
-      const clinicPayload = {
-        clinic_name: clinicName.trim(),
-        address: clinicAddress.trim() || null,
-        clinic_phone: clinicPhone.trim() || null,
-        city_id: cityId ? Number(cityId) : null,
-      };
-      const clinicObj = await dispatch(addClinic(clinicPayload)).unwrap();
-      const finalClinicId = clinicObj?.id;
+      // 2. إضافة أو تحديد العيادة
+      if (clinicMode === 'new') {
+        const clinicPayload = {
+          clinic_name: clinicName.trim(),
+          address: clinicAddress.trim() || null,
+          clinic_phone: clinicPhone.trim() || null,
+          city_id: cityId ? Number(cityId) : null,
+        };
+        clinicObj = await dispatch(addClinic(clinicPayload)).unwrap();
+        finalClinicId = clinicObj?.id;
+      } else {
+        finalClinicId = clinicObj?.id || selectedClinicId;
+      }
 
       // 3. حفظ/تحديث خطة الزيارة visit_plans ومواعيدها visit_plan_schedules
       let planObj = null;
@@ -450,7 +469,7 @@ export default function AddDoctorClinicPlanModal({
             )}
           </div>
 
-          {/* 2. قسم بيانات العيادة الجديدة */}
+          {/* 2. قسم بيانات العيادة */}
           <div
             style={{
               background: '#f8fafc',
@@ -459,72 +478,146 @@ export default function AddDoctorClinicPlanModal({
               padding: '14px',
             }}
           >
-            <div style={{ fontSize: '13.5px', fontWeight: 700, color: '#1e293b', marginBottom: '12px' }}>
-              🏥 2. تفاصيل العيادة الجديدة
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '12px',
+              }}
+            >
+              <span style={{ fontSize: '13.5px', fontWeight: 700, color: '#1e293b' }}>
+                🏥 2. بيانات العيادة / المركز
+              </span>
+
+              <div
+                style={{
+                  display: 'flex',
+                  background: '#e2e8f0',
+                  borderRadius: '8px',
+                  padding: '2px',
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setClinicMode('existing')}
+                  style={{
+                    padding: '4px 10px',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    background: clinicMode === 'existing' ? '#059669' : 'transparent',
+                    color: clinicMode === 'existing' ? '#ffffff' : '#475569',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  عيادة موجودة بالفعل
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setClinicMode('new')}
+                  style={{
+                    padding: '4px 10px',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    background: clinicMode === 'new' ? '#059669' : 'transparent',
+                    color: clinicMode === 'new' ? '#ffffff' : '#475569',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  + عيادة جديدة
+                </button>
+              </div>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {clinicMode === 'existing' ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                 <label style={{ fontSize: '12.5px', fontWeight: 700, color: '#475569' }}>
-                  اسم العيادة / المركز <span style={{ color: '#dc2626' }}>*</span>:
+                  اختر العيادة الموجودة <span style={{ color: '#dc2626' }}>*</span>:
                 </label>
-                <input
-                  type="text"
-                  placeholder="مثال: عيادة النور التخصصية"
-                  value={clinicName}
-                  onChange={(e) => setClinicName(e.target.value)}
-                  required
-                  style={{ width: '100%' }}
-                />
+                <select
+                  value={selectedClinicId}
+                  onChange={(e) => setSelectedClinicId(e.target.value)}
+                  style={{ width: '100%', border: '1.5px solid #059669', height: '40px' }}
+                >
+                  <option value="">-- اختر العيادة من القائمة --</option>
+                  {clinics &&
+                    clinics.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        🏥 {c.clinic_name} {c.city?.name ? `(${c.city.name})` : ''}
+                      </option>
+                    ))}
+                </select>
               </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                <label style={{ fontSize: '12.5px', fontWeight: 700, color: '#475569' }}>
-                  العنوان بالتفصيل:
-                </label>
-                <input
-                  type="text"
-                  placeholder="مثال: شارع التحرير، برج الأطباء، الدور الثالث"
-                  value={clinicAddress}
-                  onChange={(e) => setClinicAddress(e.target.value)}
-                  style={{ width: '100%' }}
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                   <label style={{ fontSize: '12.5px', fontWeight: 700, color: '#475569' }}>
-                    هاتف العيادة:
+                    اسم العيادة / المركز <span style={{ color: '#dc2626' }}>*</span>:
                   </label>
                   <input
-                    type="tel"
-                    placeholder="01xxxxxxxxx"
-                    value={clinicPhone}
-                    onChange={(e) => setClinicPhone(e.target.value)}
-                    style={{ width: '100%', direction: 'ltr', textAlign: 'right' }}
+                    type="text"
+                    placeholder="مثال: عيادة النور التخصصية"
+                    value={clinicName}
+                    onChange={(e) => setClinicName(e.target.value)}
+                    required
+                    style={{ width: '100%', border: '1.5px solid #059669' }}
                   />
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                   <label style={{ fontSize: '12.5px', fontWeight: 700, color: '#475569' }}>
-                    المدينة:
+                    العنوان بالتفصيل:
                   </label>
-                  <select
-                    value={cityId}
-                    onChange={(e) => setCityId(e.target.value)}
+                  <input
+                    type="text"
+                    placeholder="مثال: شارع التحرير، برج الأطباء، الدور الثالث"
+                    value={clinicAddress}
+                    onChange={(e) => setClinicAddress(e.target.value)}
                     style={{ width: '100%' }}
-                  >
-                    <option value="">اختر المدينة...</option>
-                    {cities &&
-                      cities.map((city) => (
-                        <option key={city.id} value={city.id}>
-                          {city.name}
-                        </option>
-                      ))}
-                  </select>
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                    <label style={{ fontSize: '12.5px', fontWeight: 700, color: '#475569' }}>
+                      هاتف العيادة:
+                    </label>
+                    <input
+                      type="tel"
+                      placeholder="01xxxxxxxxx"
+                      value={clinicPhone}
+                      onChange={(e) => setClinicPhone(e.target.value)}
+                      style={{ width: '100%', direction: 'ltr', textAlign: 'right' }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                    <label style={{ fontSize: '12.5px', fontWeight: 700, color: '#475569' }}>
+                      المدينة:
+                    </label>
+                    <select
+                      value={cityId}
+                      onChange={(e) => setCityId(e.target.value)}
+                      style={{ width: '100%' }}
+                    >
+                      <option value="">اختر المدينة...</option>
+                      {cities &&
+                        cities.map((city) => (
+                          <option key={city.id} value={city.id}>
+                            {city.name}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* 3. قسم خطة وتصنيف الطبيب ومواعيده المتعددة (visit_plans & schedules) */}
