@@ -627,12 +627,7 @@ export default function VisitTable() {
       enableColumnFilter: false,
       Cell: ({ row }) => {
         const v = row.original;
-        const isTemp = String(v.visit_id).startsWith('temp_');
         const alreadyDone = v.visit_outcome === 'completed' || v.visit_outcome === 'not_completed';
-
-        if (isTemp) {
-          return <span style={{ fontSize: '11px', color: '#9ca3af' }}>⏳ في الانتظار</span>;
-        }
 
         if (alreadyDone) {
           const isCompleted = v.visit_outcome === 'completed';
