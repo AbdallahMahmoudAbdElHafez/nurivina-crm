@@ -4,6 +4,7 @@ require('dotenv').config({ path: path.join(__dirname, '.env') });
 const express = require('express');
 const cors = require('cors');
 const db = require('./models');
+const { createVisitSchemaInitializer } = require('./utils/ensureVisitColumns');
 const doctorRoutes = require('./routes/doctor.routes');
 const authRoutes = require('./routes/auth.routes');
 const userRoutes = require('./routes/user.routes');
@@ -39,75 +40,7 @@ app.get('*', (req, res) => {
 
 const PORT = process.env.PORT || 4000;
 
-const ensureVisitColumns = async () => {
-  try {
-    const qi = db.sequelize.getQueryInterface();
-    const tableDesc = await qi.describeTable('visits');
-    if (!tableDesc.status) {
-      await qi.addColumn('visits', 'status', {
-        type: db.Sequelize.STRING(30),
-        allowNull: false,
-        defaultValue: 'approved',
-      });
-    }
-    if (!tableDesc.approval_type) {
-      await qi.addColumn('visits', 'approval_type', {
-        type: db.Sequelize.STRING(50),
-        allowNull: true,
-      });
-    }
-    if (!tableDesc.rejection_reason) {
-      await qi.addColumn('visits', 'rejection_reason', {
-        type: db.Sequelize.TEXT,
-        allowNull: true,
-      });
-    }
-    if (!tableDesc.deviation_meters) {
-      await qi.addColumn('visits', 'deviation_meters', {
-        type: db.Sequelize.FLOAT,
-        allowNull: true,
-      });
-    }
-    if (!tableDesc.created_doctor_id) {
-      await qi.addColumn('visits', 'created_doctor_id', {
-        type: db.Sequelize.INTEGER,
-        allowNull: true,
-      });
-    }
-    if (!tableDesc.created_clinic_id) {
-      await qi.addColumn('visits', 'created_clinic_id', {
-        type: db.Sequelize.INTEGER,
-        allowNull: true,
-      });
-    }
-    if (!tableDesc.exit_lat) {
-      await qi.addColumn('visits', 'exit_lat', {
-        type: db.Sequelize.FLOAT,
-        allowNull: true,
-      });
-    }
-    if (!tableDesc.exit_lng) {
-      await qi.addColumn('visits', 'exit_lng', {
-        type: db.Sequelize.FLOAT,
-        allowNull: true,
-      });
-    }
-    if (!tableDesc.exit_at) {
-      await qi.addColumn('visits', 'exit_at', {
-        type: db.Sequelize.DATE,
-        allowNull: true,
-      });
-    }
-    if (!tableDesc.visit_outcome) {
-      await qi.addColumn('visits', 'visit_outcome', {
-        type: db.Sequelize.STRING(30),
-        allowNull: true,
-      });
-    }
-  } catch (err) {
-    console.error('Error ensuring visit columns:', err.message);
-  }
-};
+const ensureVisitColumns = createVisitSchemaInitializer(db);
 
 if (process.env.VERCEL !== '1') {
   db.sequelize.sync({ force: false })

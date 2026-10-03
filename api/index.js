@@ -5,6 +5,7 @@ require('mysql2');
 const express = require('express');
 const cors = require('cors');
 const db = require('../backend/models');
+const { createVisitSchemaInitializer } = require('../backend/utils/ensureVisitColumns');
 const doctorRoutes = require('../backend/routes/doctor.routes');
 const authRoutes = require('../backend/routes/auth.routes');
 const userRoutes = require('../backend/routes/user.routes');
@@ -16,6 +17,7 @@ const visitRoutes = require('../backend/routes/visits.routes');
 const doctorUserRoutes = require('../backend/routes/doctorUser.routes');
 
 const app = express();
+const ensureVisitColumns = createVisitSchemaInitializer(db);
 app.use(cors());
 app.use(express.json());
 
@@ -25,7 +27,10 @@ app.use('/api/doctors', doctorRoutes);
 app.use('/api/cities', cityRoutes);
 app.use('/api/clinics', clinicRoutes);
 app.use('/api/visit-plans', visitPlanRoutes);
-app.use('/api/visits', visitRoutes);
+app.use('/api/visits', (req, res, next) => {
+  // التأكد من جاهزية الأعمدة قبل تنفيذ استعلامات الزيارة في Vercel.
+  ensureVisitColumns().then(() => next()).catch(next);
+}, visitRoutes);
 app.use('/api/doctor-users', doctorUserRoutes);
 
 app.get('/api/health', async (req, res) => {
