@@ -10,6 +10,7 @@ import { fetchCities } from '../features/cities/citiesSlice';
 import { savePendingLocation } from '../hooks/useOfflineSync';
 import AddClinicModal from './AddClinicModal';
 import AddDoctorClinicPlanModal from './AddDoctorClinicPlanModal';
+import CompleteVisitModal from './CompleteVisitModal';
 
 // ---- مكوّن زر مشاركة الموقع لكل صف ----
 function ShareLocationBtn({ visitId, onSuccess }) {
@@ -188,6 +189,10 @@ export default function VisitTable() {
   const [modalDoctorId, setModalDoctorId] = useState('');
   const [sessionAddedClinics, setSessionAddedClinics] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // حالة دايلوج إنهاء الزيارة (ملاحظات + تمت/لم تتم + شير لوكيشن خروج)
+  const [isCompleteModalOpen, setIsCompleteModalOpen] = useState(false);
+  const [selectedVisitForComplete, setSelectedVisitForComplete] = useState(null);
 
   // حالة مشاركة الموقع قبل تسجيل الزيارة
   const [sharedLocation, setSharedLocation] = useState(null); // { lat, lng, time }
@@ -614,6 +619,80 @@ export default function VisitTable() {
         />
       ),
     },
+    {
+      id: 'completeVisit',
+      header: 'إنهاء الزيارة',
+      size: 160,
+      enableSorting: false,
+      enableColumnFilter: false,
+      Cell: ({ row }) => {
+        const v = row.original;
+        const isTemp = String(v.visit_id).startsWith('temp_');
+        const alreadyDone = v.visit_outcome === 'completed' || v.visit_outcome === 'not_completed';
+
+        if (isTemp) {
+          return <span style={{ fontSize: '11px', color: '#9ca3af' }}>⏳ في الانتظار</span>;
+        }
+
+        if (alreadyDone) {
+          const isCompleted = v.visit_outcome === 'completed';
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '4px 10px',
+                  borderRadius: '14px',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  background: isCompleted ? '#f0fdf4' : '#fef2f2',
+                  color: isCompleted ? '#16a34a' : '#dc2626',
+                  border: `1px solid ${isCompleted ? '#bbf7d0' : '#fca5a5'}`,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {isCompleted ? '✅ تمت الزيارة' : '❌ لم تتم'}
+              </span>
+              {v.exit_at && (
+                <span style={{ fontSize: '10px', color: '#6b7280' }}>
+                  🕐 {new Date(v.exit_at).toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' })}
+                </span>
+              )}
+            </div>
+          );
+        }
+
+        return (
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedVisitForComplete(v);
+              setIsCompleteModalOpen(true);
+            }}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '5px',
+              padding: '6px 12px',
+              borderRadius: '8px',
+              border: '1px solid #c084fc',
+              background: 'linear-gradient(135deg, #a855f7, #7c3aed)',
+              color: '#fff',
+              fontSize: '12px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              boxShadow: '0 2px 6px rgba(168, 85, 247, 0.3)',
+              transition: 'all 0.15s ease',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            📋 إنهاء الزيارة
+          </button>
+        );
+      },
+    },
   ];
 
   return (
@@ -631,6 +710,21 @@ export default function VisitTable() {
         isOpen={isClinicModalOpen}
         onClose={() => setIsClinicModalOpen(false)}
         onClinicAdded={handleClinicAdded}
+      />
+
+      {/* دايلوج إنهاء الزيارة (ملاحظات + تمت/لم تتم + شير لوكيشن خروج) */}
+      <CompleteVisitModal
+        isOpen={isCompleteModalOpen}
+        onClose={() => {
+          setIsCompleteModalOpen(false);
+          setSelectedVisitForComplete(null);
+        }}
+        visit={selectedVisitForComplete}
+        onSuccess={() => {
+          dispatch(fetchVisits());
+          setIsCompleteModalOpen(false);
+          setSelectedVisitForComplete(null);
+        }}
       />
 
       <div

@@ -312,6 +312,55 @@ const shareLocation = async (req, res, next) => {
   }
 };
 
+// ─── إنهاء الزيارة وتسجيل الملاحظات وموقع الخروج (تمت الزيارة / لم تتم) ────────
+const completeVisit = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { outcome, notes, exit_lat, exit_lng, exit_at } = req.body;
+
+    const visit = await Visit.findByPk(id);
+    if (!visit) return res.status(404).json({ message: 'الزيارة غير موجودة' });
+
+    const accessibleUserIds = await getAccessibleUserIds(req.user);
+    if (accessibleUserIds !== null && !accessibleUserIds.includes(visit.user_id)) {
+      return res.status(403).json({ message: 'ليس لديك صلاحية لتعديل هذه الزيارة' });
+    }
+
+    const isCompleted = outcome === 'completed';
+    const updateData = {
+      notes: notes !== undefined ? notes : visit.notes,
+      exit_lat: exit_lat || null,
+      exit_lng: exit_lng || null,
+      exit_at: exit_at ? new Date(exit_at) : (exit_lat && exit_lng ? new Date() : null),
+      visit_outcome: isCompleted ? 'completed' : 'not_completed',
+    };
+
+    // إذا لم تتم الزيارة: تصبح الحالة not_visited حتى لا تُحسب كزيارة منجزة
+    if (!isCompleted) {
+      updateData.status = 'not_visited';
+    } else if (visit.status === 'not_visited') {
+      updateData.status = 'approved';
+    }
+
+    await visit.update(updateData);
+
+    const updatedVisit = await Visit.findByPk(id, {
+      include: [
+        { model: db.user, as: 'user', attributes: ['user_id', 'full_name', 'role'] },
+        { model: db.doctor, as: 'doctor', attributes: ['id', 'name'] },
+        { model: db.clinic, as: 'clinic', attributes: ['id', 'clinic_name'] },
+      ],
+    });
+
+    res.json({
+      message: isCompleted ? 'تم تسجيل إتمام الزيارة وموقع الخروج بنجاح' : 'تم تسجيل عدم إتمام الزيارة وموقع الخروج',
+      visit: updatedVisit,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 // ─── خريطة المواقع (Admin & Manager) ────────────────────────────────────────
 const getSharedLocations = async (req, res, next) => {
   try {
@@ -528,6 +577,7 @@ module.exports = {
   deleteVisit,
   getAvailableDoctorsToday,
   shareLocation,
+  completeVisit,
   getSharedLocations,
   getClinicsByDoctor,
   getPendingApprovals,

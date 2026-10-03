@@ -50,6 +50,45 @@ export async function savePendingLocation(visitId, lat, lng, sharedAt = new Date
   }
 }
 
+// حفظ إنهاء الزيارة (تمت/لم تتم) مع ملاحظات وموقع الخروج مع دعم الأوفلاين
+export async function savePendingCompleteVisit(visitId, outcome, notes, exitLat, exitLng, exitAt = new Date().toISOString()) {
+  const isCompleted = outcome === 'completed';
+  const fields = {
+    notes,
+    exit_lat: exitLat,
+    exit_lng: exitLng,
+    exit_at: exitAt,
+    visit_outcome: outcome,
+    ...(isCompleted ? {} : { status: 'not_visited' }),
+  };
+
+  // 1. تحديث الكاش المحلي فوراً
+  await updateCachedItemInList('visits', 'visit_id', visitId, fields);
+
+  // 2. إضافة العملية لطابور المزامنة
+  await addToSyncQueue({
+    type: 'COMPLETE_VISIT',
+    endpoint: `/visits/${visitId}/complete`,
+    method: 'POST',
+    payload: {
+      outcome,
+      notes,
+      exit_lat: exitLat,
+      exit_lng: exitLng,
+      exit_at: exitAt,
+    },
+    metadata: { visitId, outcome, exitAt },
+  });
+
+  // إشعار التطبيق
+  window.dispatchEvent(new CustomEvent('crm_queue_updated'));
+
+  // محاولة المزامنة الفورية إذا كان متصلاً
+  if (navigator.onLine) {
+    syncEngine.syncAll();
+  }
+}
+
 // ترحيل أي مواقع قديمة مخزنة في localStorage إلى طابور المزامنة الجديد
 async function migrateLegacyPendingLocations() {
   const legacy = getPendingLocations();

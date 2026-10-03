@@ -80,6 +80,30 @@ const ensureVisitColumns = async () => {
         allowNull: true,
       });
     }
+    if (!tableDesc.exit_lat) {
+      await qi.addColumn('visits', 'exit_lat', {
+        type: db.Sequelize.FLOAT,
+        allowNull: true,
+      });
+    }
+    if (!tableDesc.exit_lng) {
+      await qi.addColumn('visits', 'exit_lng', {
+        type: db.Sequelize.FLOAT,
+        allowNull: true,
+      });
+    }
+    if (!tableDesc.exit_at) {
+      await qi.addColumn('visits', 'exit_at', {
+        type: db.Sequelize.DATE,
+        allowNull: true,
+      });
+    }
+    if (!tableDesc.visit_outcome) {
+      await qi.addColumn('visits', 'visit_outcome', {
+        type: db.Sequelize.STRING(30),
+        allowNull: true,
+      });
+    }
   } catch (err) {
     console.error('Error ensuring visit columns:', err.message);
   }

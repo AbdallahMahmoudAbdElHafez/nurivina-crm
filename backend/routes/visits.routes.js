@@ -15,6 +15,7 @@ router.put('/:id/reject', verifyToken, isManagerOrAdmin, visitCtrl.rejectVisit);
 router.get('/:id', verifyToken, visitCtrl.getOne);
 router.post('/', verifyToken, visitCtrl.createVisit);
 router.post('/:id/share-location', verifyToken, visitCtrl.shareLocation);
+router.post('/:id/complete', verifyToken, visitCtrl.completeVisit);
 router.put('/:id', verifyToken, visitCtrl.updateVisit);
 router.delete('/:id', verifyToken, visitCtrl.deleteVisit);
 

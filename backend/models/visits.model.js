@@ -40,10 +40,26 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.DATE,
       allowNull: true,
     },
+    exit_lat: {
+      type: DataTypes.FLOAT,
+      allowNull: true,
+    },
+    exit_lng: {
+      type: DataTypes.FLOAT,
+      allowNull: true,
+    },
+    exit_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    visit_outcome: {
+      type: DataTypes.STRING(30),
+      allowNull: true, // 'completed' | 'not_completed'
+    },
     status: {
       type: DataTypes.STRING(30),
       allowNull: false,
-      defaultValue: 'approved', // 'approved' | 'pending_approval' | 'rejected'
+      defaultValue: 'approved', // 'approved' | 'pending_approval' | 'rejected' | 'not_visited'
     },
     approval_type: {
       type: DataTypes.STRING(50),
