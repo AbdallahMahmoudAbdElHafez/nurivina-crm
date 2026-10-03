@@ -26,38 +26,33 @@ function ShareLocationBtn({ visitId, onSuccess }) {
     setLoading(true);
     setStatus(null);
 
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
-        // استخدام الوقت الفعلي الخاص بإشارة الـ GPS (position.timestamp) بدلاً من توقيت الموبايل الداخلي لمنع التلاعب
-        const sharedAt = position.timestamp 
-          ? new Date(position.timestamp).toISOString() 
-          : new Date().toISOString();
+    const getPositionOptions = {
+      enableHighAccuracy: true,
+      timeout: 30000, // 30 ثانية لإعطاء شريحة الـ GPS وقتاً كافياً للاتصال بالأقمار في وضع الأوفلاين
+      maximumAge: 120000, // قبول موقع موثوق تم التقاطه خلال آخر دقيقتين إن وجد
+    };
 
-        if (navigator.onLine) {
-          try {
-            await api.post(`/visits/${visitId}/share-location`, { lat, lng, sharedAt });
-            setStatus('sent');
-            dispatch(
-              updateVisitLocally({
-                visitId,
-                fields: { shared_lat: lat, shared_lng: lng, shared_at: sharedAt },
-              })
-            );
-            if (onSuccess) onSuccess();
-          } catch (err) {
-            console.error('خطأ في إرسال الموقع، الحفظ محلياً:', err);
-            await savePendingLocation(visitId, lat, lng, sharedAt);
-            dispatch(
-              updateVisitLocally({
-                visitId,
-                fields: { shared_lat: lat, shared_lng: lng, shared_at: sharedAt },
-              })
-            );
-            setStatus('saved');
-          }
-        } else {
+    const onPosSuccess = async (position) => {
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
+      // استخدام الوقت الفعلي الخاص بإشارة الـ GPS لمنع التلاعب
+      const sharedAt = position.timestamp 
+        ? new Date(position.timestamp).toISOString() 
+        : new Date().toISOString();
+
+      if (navigator.onLine) {
+        try {
+          await api.post(`/visits/${visitId}/share-location`, { lat, lng, sharedAt });
+          setStatus('sent');
+          dispatch(
+            updateVisitLocally({
+              visitId,
+              fields: { shared_lat: lat, shared_lng: lng, shared_at: sharedAt },
+            })
+          );
+          if (onSuccess) onSuccess();
+        } catch (err) {
+          console.error('خطأ في إرسال الموقع، الحفظ محلياً:', err);
           await savePendingLocation(visitId, lat, lng, sharedAt);
           dispatch(
             updateVisitLocally({
@@ -67,17 +62,44 @@ function ShareLocationBtn({ visitId, onSuccess }) {
           );
           setStatus('saved');
         }
+      } else {
+        await savePendingLocation(visitId, lat, lng, sharedAt);
+        dispatch(
+          updateVisitLocally({
+            visitId,
+            fields: { shared_lat: lat, shared_lng: lng, shared_at: sharedAt },
+          })
+        );
+        setStatus('saved');
+      }
 
-        setLoading(false);
-      },
-      (error) => {
-        console.error('خطأ في تحديد الموقع:', error.message);
-        alert('تعذّر الحصول على موقعك. تأكد من منح إذن الوصول للموقع.');
-        setLoading(false);
-        setStatus('error');
-      },
-      { timeout: 10000, enableHighAccuracy: true }
-    );
+      setLoading(false);
+    };
+
+    const onPosError = (error) => {
+      console.warn('High accuracy failed, trying fallback...', error);
+      // محاولة ثانية بدقة قياسية في حالة كان الهاتف أوفلاين ويواجه صعوبة في التقاط الأقمار فوراً
+      navigator.geolocation.getCurrentPosition(
+        onPosSuccess,
+        (fallbackError) => {
+          console.error('خطأ في تحديد الموقع:', fallbackError);
+          let msg = 'تعذّر الحصول على موقعك.';
+          if (fallbackError.code === 1) {
+            msg = 'تم رفض إذن الوصول للموقع. يرجى تفعيل إذن الموقع للمتصفح من إعدادات الهاتف.';
+          } else if (fallbackError.code === 2) {
+            msg = 'إشارة الـ GPS غير متوفرة حالياً. تأكد من تفعيل الموقع والخروج لمكان مفتوح.';
+          } else if (fallbackError.code === 3) {
+            msg = 'استغرق الاتصال بالأقمار الصناعية وقتاً طويلاً. يرجى المحاولة مرة أخرى.';
+          }
+          alert(msg);
+          setLoading(false);
+          setStatus('error');
+        },
+        { enableHighAccuracy: false, timeout: 20000, maximumAge: 300000 }
+      );
+    };
+
+    navigator.geolocation.getCurrentPosition(onPosSuccess, onPosError, getPositionOptions);
   };
 
   const btnStyle = {
@@ -182,22 +204,41 @@ export default function VisitTable() {
     setIsLocating(true);
     setLocationError('');
 
+    const onPosSuccess = (pos) => {
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+      // استخدام الوقت الصادر من إشارة الـ GPS
+      const time = pos.timestamp ? new Date(pos.timestamp).toISOString() : new Date().toISOString();
+      setSharedLocation({ lat, lng, time });
+      setIsLocating(false);
+      setLocationError('');
+    };
+
+    const onPosError = (err) => {
+      console.warn('High accuracy capture failed, attempting fallback...', err);
+      navigator.geolocation.getCurrentPosition(
+        onPosSuccess,
+        (fallbackErr) => {
+          console.error('Location capture error:', fallbackErr);
+          setIsLocating(false);
+          let msg = 'تعذر الحصول على الموقع.';
+          if (fallbackErr.code === 1) {
+            msg = 'تم رفض الإذن. يرجى تفعيل إذن الموقع للمتصفح من إعدادات الموبايل.';
+          } else if (fallbackErr.code === 2) {
+            msg = 'إشارة الـ GPS غير متوفرة حالياً. تأكد من الخروج لمكان مفتوح لتلقي إشارة الأقمار.';
+          } else if (fallbackErr.code === 3) {
+            msg = 'استغرق تحديد الموقع وقتاً طويلاً. يرجى المحاولة مجدداً.';
+          }
+          setLocationError(msg);
+        },
+        { enableHighAccuracy: false, timeout: 20000, maximumAge: 300000 }
+      );
+    };
+
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
-        // استخدام الوقت الصادر من إشارة الـ GPS
-        const time = pos.timestamp ? new Date(pos.timestamp).toISOString() : new Date().toISOString();
-        setSharedLocation({ lat, lng, time });
-        setIsLocating(false);
-        setLocationError('');
-      },
-      (err) => {
-        console.error('Location capture error:', err);
-        setIsLocating(false);
-        setLocationError('تعذر الحصول على الموقع. يرجى تفعيل الـ GPS والسماح للمتصفح بالوصول للموقع.');
-      },
-      { timeout: 10000, enableHighAccuracy: true }
+      onPosSuccess,
+      onPosError,
+      { timeout: 30000, enableHighAccuracy: true, maximumAge: 120000 }
     );
   };
 
